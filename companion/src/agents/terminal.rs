@@ -1,13 +1,8 @@
 use super::*;
-fn proc_info(pid: u32) -> Result<(String, u32, String)> {
+fn proc_info(pid: u32) -> Result<(String, String)> {
     let info = run(
         "/bin/ps",
-        &[
-            "-p",
-            &pid.to_string(),
-            "-o",
-            "tty=,pgid=,tpgid=,ppid=,comm=",
-        ],
+        &["-p", &pid.to_string(), "-o", "tty=,pgid=,tpgid=,comm="],
         "",
         2,
     )?;
@@ -18,49 +13,21 @@ fn proc_info(pid: u32) -> Result<(String, u32, String)> {
         pg == fields.next().unwrap_or("") && tty.starts_with("tty"),
         "Agent is not in foreground."
     );
-    let parent = fields.next().context("Missing parent")?.parse()?;
-    Ok((
-        format!("/dev/{tty}"),
-        parent,
-        fields.collect::<Vec<_>>().join(" "),
-    ))
+    Ok((format!("/dev/{tty}"), fields.collect::<Vec<_>>().join(" ")))
 }
-fn app(mut parent: u32) -> Option<&'static str> {
-    for _ in 0..16 {
-        if parent <= 1 {
-            break;
-        }
-        let v = run(
-            "/bin/ps",
-            &["-p", &parent.to_string(), "-o", "ppid=,comm="],
-            "",
-            2,
+pub(super) fn discover() -> Discovery {
+    inspect().unwrap_or_else(|_| {
+        Discovery::none(
+            "Codex terminal sessions could not be inspected; refresh destinations to try again.",
         )
-        .ok()?;
-        let mut fields = v.split_whitespace();
-        parent = fields.next()?.parse().ok()?;
-        let name = fields.collect::<Vec<_>>().join(" ");
-        if name.ends_with("/Terminal.app/Contents/MacOS/Terminal") {
-            return Some("Terminal");
-        }
-        if name.contains("/iTerm.app/") || name.contains("/iTerm2.app/") {
-            return Some("iTerm2");
-        }
-        if name.contains("tmux") {
-            break;
-        }
-    }
-    None
+    })
 }
-pub(super) fn focus_destination(pid: u32) -> Option<(&'static str, String)> {
-    let (tty, parent, _) = proc_info(pid).ok()?;
-    Some((app(parent)?, tty))
-}
-pub(super) fn targets() -> Result<Vec<Value>> {
+fn inspect() -> Result<Discovery> {
+    let idle = "No Codex terminal session is running; start codex inside tmux, then refresh.";
     let dir = codex::directory()?;
     let locks = dir.join("thread-writer-locks");
     if !locks.is_dir() {
-        return Ok(vec![]);
+        return Ok(Discovery::none(idle));
     }
     let held = run(
         "/usr/sbin/lsof",
@@ -94,9 +61,9 @@ pub(super) fn targets() -> Result<Vec<Value>> {
             }
         }
     }
-    let db = dir.join("state_5.sqlite");
-    if !db.is_file() {
-        return Ok(vec![]);
+    let found = owners.len();
+    if found == 0 {
+        return Ok(Discovery::none(idle));
     }
     let ids = owners
         .values()
@@ -104,24 +71,26 @@ pub(super) fn targets() -> Result<Vec<Value>> {
         .map(|id| format!("'{id}'"))
         .collect::<Vec<_>>()
         .join(",");
-    if ids.is_empty() {
-        return Ok(vec![]);
-    }
     let sql = format!(
         "SELECT id,cwd,name FROM threads WHERE archived=0 AND source='cli' AND id IN ({ids})"
     );
-    let raw = run(
-        "/usr/bin/sqlite3",
-        &[
-            "-readonly",
-            "-json",
-            db.to_str().context("Invalid Codex home")?,
-            &sql,
-        ],
-        "",
-        3,
-    )?;
-    let rows: Value = serde_json::from_str(&raw).unwrap_or(Value::Null);
+    let db = dir.join("state_5.sqlite");
+    let rows: Value = if db.is_file() {
+        let raw = run(
+            "/usr/bin/sqlite3",
+            &[
+                "-readonly",
+                "-json",
+                db.to_str().context("Invalid Codex home")?,
+                &sql,
+            ],
+            "",
+            3,
+        )?;
+        serde_json::from_str(&raw).unwrap_or(Value::Null)
+    } else {
+        Value::Null
+    };
     let panes = run(
         "tmux",
         &[
@@ -135,8 +104,6 @@ pub(super) fn targets() -> Result<Vec<Value>> {
         3,
     )
     .unwrap_or_default();
-    let queue = run("codex", &["queue", "--help"], "", 4)
-        .is_ok_and(|s| s.contains("--thread") && s.contains("--message"));
     let mut out = vec![];
     for (pid, ids) in owners {
         if ids.len() != 1 {
@@ -153,7 +120,10 @@ pub(super) fn targets() -> Result<Vec<Value>> {
         let Some(row) = list(&rows).find(|r| r["id"] == *id) else {
             continue;
         };
-        let Ok((tty, parent, command)) = proc_info(pid) else {
+        let Some(project) = row["cwd"].as_str() else {
+            continue;
+        };
+        let Ok((tty, command)) = proc_info(pid) else {
             continue;
         };
         if Path::new(&command).file_name().is_none_or(|s| s != "codex") {
@@ -167,163 +137,140 @@ pub(super) fn targets() -> Result<Vec<Value>> {
                     .then(|| v[0])
             })
             .next();
-        let route = if pane.is_some() {
-            Some("tmux")
-        } else {
-            app(parent)
-        };
-        for method in route.into_iter().chain(queue.then_some("codex-queue")) {
-            let mode = if method == "codex-queue" {
-                "deferred queue · UI may require reopening"
-            } else if method == "Terminal" {
-                "Terminal.app Automation (preview)"
-            } else if method == "iTerm2" {
-                "iTerm2 Automation (preview)"
-            } else {
-                method
-            };
+        if let Some(pane) = pane {
             let label = format!(
-                "Codex · {} · {} · {mode}",
+                "Codex · {} · {} · tmux",
                 row["name"].as_str().unwrap_or("Terminal"),
                 &id[..8]
             );
-            let mut t = make(method, &format!("{id}:{pid}"), string(row, "cwd")?, &label);
-            t["pid"] = json!(pid);
-            t["tty"] = json!(tty);
+            let mut t = make("tmux", &format!("{id}:{pid}"), project, &label);
             t["pane"] = json!(pane);
             out.push(t);
         }
     }
-    Ok(out)
-}
-fn apple(t: &Value, msg: &str, focus: bool) -> Result<()> {
-    let terminal = t["session"] == "Terminal";
-    let script = match (terminal, focus) {
-        (true, false) => {
-            r#"on run argv
-tell application "Terminal"
-repeat with w in windows
-repeat with t in tabs of w
-if tty of t is item 1 of argv then
-do script (item 2 of argv) in t
-return
-end if
-end repeat
-end repeat
-end tell
-error "Terminal tab closed"
-end run"#
-        }
-        (true, true) => {
-            r#"on run argv
-tell application "Terminal"
-repeat with w in windows
-repeat with t in tabs of w
-if tty of t is item 1 of argv then
-set selected tab of w to t
-set index of w to 1
-activate
-return
-end if
-end repeat
-end repeat
-end tell
-error "Terminal tab closed"
-end run"#
-        }
-        (false, _) => {
-            r#"on run argv
-tell application id "com.googlecode.iterm2"
-repeat with w in windows
-repeat with t in tabs of w
-repeat with s in sessions of t
-if tty of s is item 1 of argv then
-if item 3 of argv is "focus" then
-select w
-select t
-select s
-activate
-else
-tell s to write text (item 2 of argv)
-end if
-return
-end if
-end repeat
-end repeat
-end repeat
-end tell
-error "iTerm session closed"
-end run"#
-        }
+    let detail = if !out.is_empty() {
+        format!(
+            "{} can receive notes through tmux.",
+            count(out.len(), "Codex terminal session")
+        )
+    } else if executable("tmux").is_none() {
+        "Codex is running in a terminal, but tmux is not on the helper's PATH; rerun the \
+         PaneParcel installer from a terminal where tmux works."
+            .into()
+    } else {
+        "Codex is running in a terminal, but not in the foreground of a tmux pane with a saved \
+         thread; run it in tmux with copy mode and synchronized panes off, then refresh."
+            .into()
     };
-    run("/usr/bin/osascript",&["-e",script,"--",string(t,"tty")?,msg,if focus{"focus"}else{"send"}],"",30)
-        .context("Inspect the terminal before retrying. Check macOS Automation permission and the selected tab.")?;
+    Ok(Discovery {
+        targets: out,
+        found,
+        detail,
+    })
+}
+pub(super) fn send(t: &Value, batch: Batch) -> Result<()> {
+    let _guard = rex::lock("delivery.lock")?;
+    deliver(
+        t,
+        &batch.message()?,
+        |args, input| run("tmux", args, input, 3),
+        || discover().targets,
+    )
+}
+// Loading the buffer only reaches the tmux server. From the paste on, the agent may hold
+// the text, so every later failure is uncertain.
+fn deliver(
+    t: &Value,
+    msg: &str,
+    mut tmux: impl FnMut(&[&str], &str) -> Result<String>,
+    rediscover: impl FnOnce() -> Vec<Value>,
+) -> Result<()> {
+    let p = string(t, "pane")?;
+    let buffer = format!("paneparcel-{}", std::process::id());
+    tmux(&["load-buffer", "-b", &buffer, "-"], msg)?;
+    let paste = tmux(&["paste-buffer", "-p", "-d", "-b", &buffer, "-t", p], "");
+    if paste.is_err() {
+        let _ = tmux(&["delete-buffer", "-b", &buffer], "");
+    }
+    let check = "Delivery is uncertain: the notes may be in the tmux pane without Enter \
+                 pressed. Check the selected tmux pane before sending again.";
+    uncertain_once_started(paste, check)?;
+    uncertain(matching(t, rediscover()), check)?;
+    uncertain(tmux(&["send-keys", "-t", p, "Enter"], ""), check)?;
     Ok(())
 }
-pub(super) fn focus(t: &Value) -> Result<()> {
-    ensure!(
-        matches!(t["session"].as_str(), Some("Terminal" | "iTerm2")),
-        "Focus unavailable."
-    );
-    apple(t, "", true)
-}
-pub(super) fn send(t: &Value, msg: &str) -> Result<&'static str> {
-    let id = string(t, "block")?
-        .split(':')
-        .nth(1)
-        .context("Missing thread ID")?;
-    match string(t, "session")? {
-        "codex-queue" => {
-            ensure!(uuid(id), "Invalid thread");
-            run(
-                "codex",
-                &["queue", "--thread", id, "--message", msg],
-                "",
-                10,
-            )
-            .context("Codex did not confirm queueing. Inspect the thread before retrying.")?;
-            Ok("Queued on the exact Codex thread. Its current terminal may require reopening to show it.")
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn target() -> Value {
+        let mut t = make("tmux", "thread:7", "/work/site", "Codex");
+        t["pane"] = json!("%3");
+        t
+    }
+    // Runs a delivery against a scripted tmux. `failing` names the subcommand that fails,
+    // `unstarted` makes that failure a tmux that could not be launched at all.
+    fn attempt(failing: &str, unstarted: bool, still_there: bool) -> (Value, Vec<String>) {
+        let mut calls = vec![];
+        let t = target();
+        let result = deliver(
+            &t,
+            "notes",
+            |args, _| {
+                calls.push(args[0].to_owned());
+                if args[0] != failing {
+                    return Ok(String::new());
+                }
+                if unstarted {
+                    return Err(anyhow::anyhow!("no tmux").context(Unstarted("tmux".into())));
+                }
+                bail!("tmux declined the request.")
+            },
+            || if still_there { vec![target()] } else { vec![] },
+        );
+        let reply = match result {
+            Ok(()) => json!({"ok":true}),
+            Err(e) => failure(&e, true),
+        };
+        (reply, calls)
+    }
+    #[test]
+    fn tmux_pastes_then_rechecks_the_pane_before_enter() {
+        let (reply, calls) = attempt("", false, true);
+        assert_eq!(reply, json!({"ok":true}));
+        assert_eq!(calls, ["load-buffer", "paste-buffer", "send-keys"]);
+    }
+    #[test]
+    fn a_buffer_that_never_loaded_is_a_plain_failure() {
+        let (reply, calls) = attempt("load-buffer", false, true);
+        assert_eq!(reply["ok"], false);
+        assert_eq!(reply["uncertain"], false, "{reply}");
+        assert_eq!(calls, ["load-buffer"]);
+    }
+    #[test]
+    fn a_paste_that_could_not_launch_tmux_is_a_plain_failure() {
+        let (reply, calls) = attempt("paste-buffer", true, true);
+        assert_eq!(reply["uncertain"], false, "{reply}");
+        assert_eq!(calls, ["load-buffer", "paste-buffer", "delete-buffer"]);
+    }
+    #[test]
+    fn a_paste_that_failed_or_timed_out_is_uncertain_and_never_presses_enter() {
+        let (reply, calls) = attempt("paste-buffer", false, true);
+        assert_eq!(reply["uncertain"], true, "{reply}");
+        assert_eq!(calls, ["load-buffer", "paste-buffer", "delete-buffer"]);
+    }
+    #[test]
+    fn a_pane_that_changed_after_the_paste_is_uncertain_and_never_gets_enter() {
+        let (reply, calls) = attempt("", false, false);
+        assert_eq!(reply["uncertain"], true, "{reply}");
+        assert_eq!(calls, ["load-buffer", "paste-buffer"]);
+    }
+    #[test]
+    fn a_failed_enter_after_the_paste_is_uncertain() {
+        for unstarted in [false, true] {
+            let (reply, calls) = attempt("send-keys", unstarted, true);
+            assert_eq!(reply["uncertain"], true, "{reply}");
+            assert_eq!(calls, ["load-buffer", "paste-buffer", "send-keys"]);
         }
-        "tmux" => {
-            let _guard = rex::lock("delivery.lock")?;
-            let p = string(t, "pane")?;
-            let buffer = format!("paneparcel-{}", std::process::id());
-            run("tmux", &["load-buffer", "-b", &buffer, "-"], msg, 3)?;
-            let paste = run(
-                "tmux",
-                &["paste-buffer", "-p", "-d", "-b", &buffer, "-t", p],
-                "",
-                3,
-            );
-            if paste.is_err() {
-                let _ = run("tmux", &["delete-buffer", "-b", &buffer], "", 3);
-            }
-            let check = "Inspect the selected tmux pane before retrying.";
-            paste.context(check)?;
-            matching(t, targets().context(check)?).context(check)?;
-            run("tmux", &["send-keys", "-t", p, "Enter"], "", 3).context(check)?;
-            Ok("Submitted through the selected tmux pane.")
-        }
-        "Terminal" | "iTerm2" => {
-            // A first Apple event can wait on a macOS Automation permission prompt.
-            // Acquire permission before checking the foreground owner a final time.
-            let probe = if t["session"] == "Terminal" {
-                r#"tell application "Terminal" to get version"#
-            } else {
-                r#"tell application id "com.googlecode.iterm2" to get version"#
-            };
-            run("/usr/bin/osascript", &["-e", probe], "", 60).context(
-                "Allow terminal Automation in System Settings, then refresh destinations.",
-            )?;
-            let _guard = rex::lock("delivery.lock")?;
-            let current = matching(t, targets()?)?;
-            ensure!(
-                current["tty"] == t["tty"],
-                "Terminal tab changed. Refresh destinations."
-            );
-            apple(&current, msg, false)?;
-            Ok("Submitted through the selected terminal tab.")
-        }
-        _ => bail!("Unknown terminal route"),
     }
 }

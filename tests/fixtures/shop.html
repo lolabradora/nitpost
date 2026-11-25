@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forma shop fixture</title>
+<style>
+body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: #fff; color: #222; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 20px; border-bottom: 1px solid #ddd; }
+main { padding: 20px; max-width: 900px; }
+.menu { position: relative; display: inline-block; }
+.menu ul { position: absolute; left: 0; top: 100%; z-index: 5; margin: 4px 0 0; padding: 6px; list-style: none;
+  min-width: 150px; background: #fff; border: 1px solid #bbb; border-radius: 6px; }
+.menu li button, #filters button, #confirm { display: block; width: 100%; padding: 10px 12px; border: 0;
+  font: inherit; color: #fff; text-align: left; }
+/* Each menu paints its items in one flat colour, so a test can tell from a crop that the menu was open. */
+#account-list button { background: rgb(10, 125, 50); }
+#shop-menu li button { background: rgb(20, 60, 200); }
+#filters button { background: rgb(120, 40, 160); }
+#shipping-terms { margin: 0; padding: 10px 12px; background: rgb(200, 90, 10); color: #fff; }
+#confirm { background: rgb(190, 20, 40); }
+#shop-menu ul { display: none; }
+#shop-menu:hover ul { display: block; }
+#filters { position: fixed; left: 420px; top: 120px; margin: 0; padding: 10px; width: 180px; border: 1px solid #888; }
+dialog { padding: 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 48px 16px; margin: 24px 0; }
+.swatch { padding: 14px; border: 1px solid #ddd; border-radius: 8px; }
+#buy { padding: 8px 16px; background: #1a56db; color: #fff; border: 0; border-radius: 6px; font: inherit; }
+.spacer { height: 1200px; }
+</style>
+</head>
+<body>
+<header>
+  <strong id="brand">Forma</strong>
+  <div class="menu" id="account-menu">
+    <button id="account-trigger" aria-expanded="false">Account</button>
+    <ul id="account-list" hidden>
+      <li><button id="account-profile">Profile</button></li>
+      <li><button id="account-signout">Sign out</button></li>
+    </ul>
+  </div>
+  <div class="menu" id="shop-menu">
+    <button id="shop-trigger">Shop</button>
+    <ul>
+      <li><button id="shop-chairs">Chairs</button></li>
+      <li><button id="shop-lamps">Lamps</button></li>
+    </ul>
+  </div>
+  <button id="filters-trigger" popovertarget="filters">Filters</button>
+  <button id="dialog-trigger">Open dialog</button>
+  <select id="sort"><option>Newest</option><option>Price</option><option>Name</option></select>
+</header>
+<div id="filters" popover>
+  <button id="filter-price">Price</button>
+  <button id="filter-colour">Colour</button>
+</div>
+<dialog id="dialog">
+  <p>Remove this chair from the cart?</p>
+  <button id="confirm">Confirm</button>
+  <button id="dialog-close">Close</button>
+</dialog>
+<main>
+  <h1 id="title">Lounge chair</h1>
+  <p id="lede">A low chair in oiled oak with a wool seat. Ships in two weeks.</p>
+  <button id="buy">Add to cart</button>
+  <details id="shipping">
+    <summary id="shipping-summary">Shipping details</summary>
+    <p id="shipping-terms">Free delivery over 50 euro. <a href="#returns" id="returns-link">Returns policy</a></p>
+  </details>
+  <div class="grid">
+    <div class="swatch" id="oak">Oak</div>
+    <div class="swatch" id="walnut">Walnut</div>
+    <div class="swatch" id="ash">Ash</div>
+    <div class="swatch" id="beech">Beech</div>
+  </div>
+  <div class="spacer"></div>
+  <p id="deep">Deep content far down the page.</p>
+</main>
+<script>
+// A dropdown the way many sites build one: a click toggles it, and it closes on a pointer press outside
+// it and when focus leaves it. `menuLog` records why it closed and which page clicks got through.
+const list = document.getElementById('account-list');
+const trigger = document.getElementById('account-trigger');
+const menu = document.getElementById('account-menu');
+window.menuLog = [];
+function closeMenu(reason) {
+  if (list.hidden) return;
+  list.hidden = true;
+  trigger.setAttribute('aria-expanded', 'false');
+  menuLog.push('closed:' + reason);
+}
+trigger.addEventListener('click', () => {
+  list.hidden = !list.hidden;
+  trigger.setAttribute('aria-expanded', String(!list.hidden));
+});
+document.addEventListener('pointerdown', event => {
+  if (!event.target.closest('#account-menu')) closeMenu('outside-pointerdown');
+}, true);
+menu.addEventListener('focusout', event => {
+  if (!event.relatedTarget || !event.relatedTarget.closest('#account-menu')) closeMenu('blur');
+});
+document.addEventListener('click', event => menuLog.push('click:' + (event.target.id || event.target.localName)));
+document.getElementById('dialog-trigger').addEventListener('click', () => document.getElementById('dialog').showModal());
+document.getElementById('dialog-close').addEventListener('click', () => document.getElementById('dialog').close());
+</script>
+</body>
+</html>

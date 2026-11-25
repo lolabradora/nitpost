@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Billing fixture</title>
+<style>
+body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: #f4f5f7; color: #222; }
+header { display: flex; justify-content: space-between; padding: 12px 20px; background: #fff; border-bottom: 1px solid #ddd; }
+main { padding: 20px; max-width: 720px; }
+#billing { padding: 20px; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
+#billing dl { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; }
+</style>
+</head>
+<body>
+<header><strong>Forma admin</strong><span id="session">Signed in as dana.reyes@customer.example</span></header>
+<main>
+  <section id="billing">
+    <h2 id="billing-title">Billing contact</h2>
+    <dl>
+      <dt>Customer</dt><dd id="customer-name">Dana Reyes</dd>
+      <dt>Email</dt><dd id="customer-email">dana.reyes@customer.example</dd>
+      <dt>Plan</dt><dd id="customer-plan">Studio, renews 1 March</dd>
+    </dl>
+    <button id="change-plan">Change plan</button>
+  </section>
+</main>
+</body>
+</html>

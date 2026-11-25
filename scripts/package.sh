@@ -15,9 +15,11 @@ fi
 /usr/bin/codesign --verify --all-architectures "$tmp/paneparcel"
 mkdir "$tmp/extension"
 /usr/bin/rsync -r --exclude=".DS_Store" extension/ "$tmp/extension/"
-mkdir -p dist
+mkdir -p "$tmp/scripts" "$tmp/skills/paneparcel" dist
+cp scripts/install-skill.sh "$tmp/scripts/"
+cp skills/paneparcel/SKILL.md "$tmp/skills/paneparcel/"
 asset=paneparcel-macos-arm64.tar.gz
-COPYFILE_DISABLE=1 /usr/bin/tar -czf "$tmp/$asset" -C "$tmp" paneparcel extension
+COPYFILE_DISABLE=1 /usr/bin/tar -czf "$tmp/$asset" -C "$tmp" paneparcel extension scripts skills
 mv "$tmp/$asset" "dist/$asset"
 (cd "$tmp" && /usr/bin/zip -q paneparcel-notary.zip paneparcel)
 sh scripts/package-chrome.sh "$tmp/paneparcel-chrome.zip"

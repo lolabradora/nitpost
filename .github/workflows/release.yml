@@ -77,6 +77,10 @@ jobs:
           {
             printf 'PaneParcel for Apple Silicon Macs and Google Chrome. Rex is optional.\n\n'
             cat "$RUNNER_TEMP/signing.txt"
+            if [[ -f "releases/$tag.md" ]]; then
+              echo
+              cat "releases/$tag.md"
+            fi
             printf '\n```sh\ncurl -fsSL https://github.com/%s/releases/download/%s/install.sh | /bin/sh\n```\n' "$GITHUB_REPOSITORY" "$tag"
             printf '\nIn Chrome, enable Developer mode, choose **Load unpacked**, then select `~/Library/Application Support/PaneParcel/extension`. See the [installation and upgrade guide](https://github.com/%s/blob/%s/README.md).\n' "$GITHUB_REPOSITORY" "$tag"
           } > "$notes"

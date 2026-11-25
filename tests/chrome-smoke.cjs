@@ -35,12 +35,13 @@ async function main() {
       const bin = path.join(home, 'fixture-bin');
       fs.mkdirSync(bin);
       fs.symlinkSync('/usr/bin/false', path.join(bin, 'rex'));
+      // The legacy launcher copies this PATH for its host, so it holds the fake rex and no real agent.
       execFileSync('python3', [path.join(previous, 'host/install.py')], {
-        env:{...process.env, HOME:home, PATH:bin + ':' + process.env.PATH}
+        env:{...process.env, HOME:home, PATH:bin + ':' + env.PATH}
       });
     } else install();
     async function openProfile() {
-      browser = spawn(executable, ['--headless', '--no-first-run', '--disable-background-networking',
+      browser = spawn(executable, ['--headless', '--use-mock-keychain', '--password-store=basic', '--no-first-run', '--disable-background-networking',
         '--remote-debugging-pipe', '--enable-unsafe-extension-debugging', '--user-data-dir=' + profile,
         '--load-extension=' + loaded, pageUrl], {env, stdio: ['ignore','ignore','ignore','pipe','pipe']});
       let id = 0, buffer = '';
@@ -102,8 +103,14 @@ async function main() {
       return {evaluate: expression => evaluate(active, expression), checkToolbar};
     }
     const first = await openProfile();
-    const list = "chrome.runtime.sendNativeMessage('com.micovi.paneparcel',{op:'targets'})";
-    if (!previous) assert.deepEqual(await first.evaluate(list), {ok:true, starts:[], targets:[]});
+    // The temporary HOME has no agent, so the helper lists nothing and says why for each route.
+    async function checkEmptyMachine(profile) {
+      const {checks, ...listed} = await profile.evaluate("chrome.runtime.sendNativeMessage('com.micovi.paneparcel',{op:'targets'})");
+      assert.deepEqual(listed, {ok:true, starts:[], targets:[]});
+      assert.deepEqual(checks?.map(check => [check.route, check.eligible]), [['claude',0],['codex',0],['tmux',0],['rex',0]],
+        'The installed helper predates connection checks. Rebuild dist/ with scripts/package.sh.');
+    }
+    if (!previous) await checkEmptyMachine(first);
     else assert.equal((await first.evaluate("chrome.runtime.sendNativeMessage('com.micovi.paneparcel',{op:'fixture'})")).ok, false);
     await first.evaluate('chrome.storage.local.set(' + JSON.stringify(state) + ')');
     const closed = once(browser, 'exit');
@@ -112,7 +119,7 @@ async function main() {
     install(...(previous ? ['--extension-dir', loaded] : []));
     const second = await openProfile();
     assert.deepEqual(await second.evaluate('chrome.storage.local.get(' + JSON.stringify(Object.keys(state)) + ')'),state);
-    assert.deepEqual(await second.evaluate(list), {ok:true, starts:[], targets:[]});
+    await checkEmptyMachine(second);
     await second.checkToolbar();
     console.log('Verified toolbar on local HTML, native messaging, same extension ID, notes and project preferences after upgrade.');
   } finally {

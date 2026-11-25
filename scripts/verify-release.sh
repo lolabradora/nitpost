@@ -12,6 +12,8 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 tar -xzf "$asset" -C "$tmp"
 [ "$(lipo -archs "$tmp/paneparcel")" = arm64 ]
+cmp scripts/install-skill.sh "$tmp/scripts/install-skill.sh"
+cmp skills/paneparcel/SKILL.md "$tmp/skills/paneparcel/SKILL.md"
 codesign --verify --strict "$tmp/paneparcel"
 codesign -v -R='anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.13] exists' "$tmp/paneparcel"
 codesign -dv --verbose=4 "$tmp/paneparcel" 2>&1 | grep -q '(runtime)'

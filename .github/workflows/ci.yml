@@ -9,7 +9,7 @@ permissions:
 jobs:
   verify:
     runs-on: macos-15
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,3 +33,4 @@ jobs:
           chrome="$RUNNER_TEMP/cft/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
           node tests/chrome-smoke.cjs "$chrome"
           node tests/chrome-smoke.cjs "$chrome" "$GITHUB_WORKSPACE"
+          PANEPARCEL_COMPANION=companion/target/aarch64-apple-darwin/release/paneparcel node tests/chrome-ui.cjs "$chrome"

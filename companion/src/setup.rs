@@ -89,6 +89,11 @@ pub fn register() -> Result<()> {
     let mut args = env::args().skip(2);
     let mode = args.next().unwrap_or_default();
     if mode == "uninstall" {
+        // Screenshots handed to agents hold page content. Remove them with the companion.
+        let shots = shots_dir()?;
+        if shots.symlink_metadata().is_ok_and(|m| m.is_dir()) {
+            fs::remove_dir_all(&shots)?;
+        }
         for path in [
             manifest,
             host,
@@ -100,7 +105,7 @@ pub fn register() -> Result<()> {
                 fs::remove_file(path)?;
             }
         }
-        println!("Removed the companion. Chrome retains its extension and saved notes.");
+        println!("Removed the companion and its saved screenshots. Chrome retains its extension and saved notes.");
         return Ok(());
     }
     ensure!(mode == "install", "Expected register install or uninstall.");

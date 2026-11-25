@@ -1,0 +1,94 @@
+.docs {
+  display: grid; grid-template-columns: 210px minmax(0, 1fr);
+  gap: clamp(32px, 7vw, 96px); align-items: start;
+  padding-block: clamp(40px, 6vw, 80px) clamp(64px, 8vw, 112px);
+}
+.docs-nav { position: sticky; top: 96px; display: grid; gap: 2px; font-size: 14.5px; }
+.docs-nav a {
+  padding: 6px 12px; border-radius: 8px; color: var(--body); text-decoration: none;
+  transition: color .18s, background .18s;
+}
+.docs-nav a:hover { color: var(--ink); background: #1c1a210a; }
+.navbar nav a[aria-current="page"] { color: var(--ink); }
+
+.docs-main { max-width: 72ch; }
+.docs-main section { scroll-margin-top: 84px; }
+.docs-main section + section { margin-top: clamp(56px, 7vw, 88px); }
+.docs-main h1 { font-size: clamp(2.2rem, 4.6vw, 3.4rem); line-height: 1.04; font-weight: 580; letter-spacing: -.038em; }
+.docs-main h2 { font-size: clamp(1.6rem, 2.8vw, 2.1rem); line-height: 1.1; font-weight: 580; letter-spacing: -.03em; }
+.docs-main h3 { margin-top: 30px; font-size: 1.15rem; font-weight: 600; letter-spacing: -.015em; }
+.docs-main p, .docs-main li, .docs-main dd, .docs-main td { color: var(--body); line-height: 1.65; }
+.docs-main p, .docs-main ol, .docs-main ul { margin-top: 14px; }
+.docs-main h3 + p { margin-top: 8px; }
+.docs-main .docs-lede { margin-top: 20px; color: var(--ink); font-size: 1.2rem; line-height: 1.5; letter-spacing: -.012em; }
+.docs-main strong { color: var(--ink); font-weight: 600; }
+.docs-main ol, .docs-main ul { padding-left: 1.3em; }
+.docs-main li + li { margin-top: 6px; }
+.docs-main li::marker { color: var(--muted); font-variant-numeric: tabular-nums; }
+.docs-main code, .docs-main kbd { font-family: var(--mono); font-size: .88em; }
+.docs-main p code, .docs-main td code {
+  padding: 2px 6px; border-radius: 6px; overflow-wrap: anywhere;
+  background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--ink);
+}
+.docs-main kbd {
+  display: inline-block; min-width: 1.7em; margin-inline: 1px; padding: 1px 5px; text-align: center;
+  border-radius: 5px; background: var(--card); color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 0 1px var(--line);
+}
+.docs-main .install-command {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px;
+  margin-top: 14px; padding: 10px 10px 10px 18px; border-radius: 14px;
+  background: var(--night); color: #ece6f5;
+}
+.docs-main .install-command code { min-width: 0; padding-block: 6px; line-height: 1.6; overflow-wrap: anywhere; user-select: all; }
+.docs-main .install-command code::before { content: "$ "; color: #a895d6; user-select: none; }
+.docs-main .install-status:empty { display: none; }
+.docs-main .install-status { font-size: .875rem; margin-top: 8px; }
+
+.docs-best {
+  margin-top: 24px; padding: 20px 24px 22px; border-radius: 16px; background: var(--card);
+  box-shadow: 0 0 0 1.5px var(--violet), 0 18px 30px -24px #3a285e88;
+}
+.docs-best h3 { margin-top: 0; }
+.docs-best h3 span {
+  margin-left: 8px; padding: 2px 9px; border-radius: 999px; vertical-align: 2px;
+  background: var(--violet); color: white; font-size: 12px; font-weight: 480; letter-spacing: 0;
+}
+.docs-best ul { padding: 0; list-style: none; }
+.docs-best li { position: relative; padding-left: 22px; }
+.docs-best li::before {
+  content: ""; position: absolute; left: 2px; top: .58em; width: 9px; height: 5px;
+  border: solid var(--violet); border-width: 0 0 1.75px 1.75px; transform: rotate(-45deg);
+}
+
+.docs-table { margin-top: 14px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
+.docs-table table { width: 100%; border-collapse: collapse; font-size: .94rem; }
+.docs-table th, .docs-table td { padding: 14px 18px; text-align: left; vertical-align: top; }
+.docs-table thead th { color: var(--muted); font-size: .8rem; font-weight: 500; border-bottom: 1px solid var(--line); }
+.docs-table tbody th { width: 24%; color: var(--ink); font-weight: 600; }
+.docs-table tbody tr + tr > * { border-top: 1px solid var(--line); }
+
+.docs-fields { margin: 18px 0 0; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+.docs-fields div { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 16px; padding: 13px 18px; }
+.docs-fields div + div { border-top: 1px solid var(--line); }
+.docs-fields dt { font-weight: 600; }
+.docs-fields dd { margin: 0; }
+
+@media (max-width: 860px) {
+  .docs { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .docs-nav {
+    position: static; display: flex; flex-wrap: wrap; gap: 6px;
+    padding-bottom: 20px; border-bottom: 1px solid var(--line);
+  }
+  .docs-nav a { padding: 6px 12px; border-radius: 999px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+}
+@media (max-width: 620px) {
+  .docs-table thead { display: none; }
+  .docs-table tr { display: grid; padding: 14px 18px; gap: 6px; }
+  .docs-table tbody tr + tr { border-top: 1px solid var(--line); }
+  .docs-table th, .docs-table td { padding: 0; }
+  .docs-table tbody th { width: auto; }
+  .docs-table tbody tr + tr > * { border-top: 0; }
+  .docs-fields div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .docs-main .install-command { grid-template-columns: minmax(0, 1fr); padding: 12px 14px; }
+}

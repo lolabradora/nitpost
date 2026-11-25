@@ -5,6 +5,7 @@ import shlex
 import struct
 import subprocess
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -28,7 +29,18 @@ class BridgeTests(unittest.TestCase):
         # All page-supplied data constitutes a single quoted shell argument.
         args = shlex.split(message)
         self.assertEqual(args[:-1], ["Web", "annotations", "from", "PaneParcel:"])
-        self.assertEqual(json.loads(args[-1])["notes"][0]["comment"], special)
+        batch = json.loads(args[-1])
+        self.assertEqual(batch["Source page"], self.request["page"])
+        self.assertEqual(batch["notes"][0]["User note"], special)
+        self.assertEqual(batch["notes"][0]["Selected element"], {"selector": "button", "text": "", "viewport": "1280x900"})
+
+    def test_notes_state_their_kind_and_default_to_change(self):
+        self.request["notes"].append({**self.request["notes"][0], "kind": "question"})
+        batch = json.loads(shlex.split(bridge.batch_message(self.request))[-1])
+        self.assertEqual([note["kind"] for note in batch["notes"]], ["change", "question"])
+        self.request["notes"][0]["kind"] = "praise"
+        with self.assertRaises(bridge.BridgeError):
+            bridge.batch_message(self.request)
 
     def test_incomplete_and_oversize_frames_are_rejected_before_parsing(self):
         for data in (b"", struct.pack("=I", 300) + b"{}", struct.pack("=I", bridge.MAX_FRAME + 1)):
@@ -129,6 +141,57 @@ class BridgeTests(unittest.TestCase):
         with patch.object(bridge, "rex", side_effect=bridge.NoServer()):
             self.assertEqual(bridge.destinations(), [])
 
+    def native_reply(self, request):
+        data = json.dumps(request).encode("utf-8")
+        stdin = SimpleNamespace(buffer=io.BytesIO(struct.pack("=I", len(data)) + data))
+        stdout = SimpleNamespace(buffer=io.BytesIO())
+        with patch.object(bridge.sys, "stdin", stdin), patch.object(bridge.sys, "stdout", stdout):
+            bridge.main()
+        framed = stdout.buffer.getvalue()
+        self.assertEqual(struct.unpack("=I", framed[:4])[0], len(framed) - 4)
+        return json.loads(framed[4:].decode("utf-8"))
+
+    def test_send_failures_state_whether_the_paste_may_have_landed(self):
+        send = {**self.request, "op": "send"}
+        with tempfile.TemporaryDirectory() as home, patch.object(Path, "home", return_value=Path(home)), \
+                patch.object(bridge, "agent_process", side_effect=[bridge.Agent("codex", pid, home) for pid in (11, 12)]), \
+                patch.object(bridge, "rex"):
+            reply = self.native_reply(send)
+        self.assertEqual((reply["ok"], reply["uncertain"]), (False, True))
+        with tempfile.TemporaryDirectory() as home, patch.object(Path, "home", return_value=Path(home)), \
+                patch.object(bridge, "agent_process", return_value=None), patch.object(bridge, "rex") as rex:
+            reply = self.native_reply(send)
+        self.assertEqual((reply["ok"], reply["uncertain"]), (False, False))
+        rex.assert_not_called()
+        with patch.object(bridge, "rex") as rex:
+            reply = self.native_reply({**send, "block": "focused"})
+        self.assertEqual((reply["ok"], reply["uncertain"]), (False, False))
+        rex.assert_not_called()
+        # Start keeps the legacy shape: no flag, read as uncertain.
+        self.assertNotIn("uncertain", self.native_reply({**self.request, "op": "start", "agent": "other"}))
+
+    def test_capabilities_request_is_cleanly_rejected(self):
+        # The extension reads a failed capabilities request as "no screenshots, payload 1".
+        self.assertEqual(self.native_reply({"op": "capabilities"}), {"ok": False, "error": "Unknown operation."})
+
+    def test_newer_note_shapes_are_rejected_with_a_recovery_and_never_reach_rex(self):
+        base = self.request["notes"][0]
+        selection = {key: base[key] for key in ("comment", "height", "width")}
+        newer = {
+            "area": {**selection, "scope": "area", "rect": {"x": 1, "y": 2, "width": 30, "height": 40}},
+            "group": {**selection, "scope": "group", "elements": [{"selector": "a", "text": ""}, {"selector": "b", "text": ""}]},
+            "reference": {**base, "reference": "data:image/jpeg;base64,/9j/4A=="},
+            "unknown scope": {**base, "scope": "page"},
+        }
+        for name, note in newer.items():
+            with self.subTest(name), patch.object(bridge, "rex") as rex:
+                reply = self.native_reply({**self.request, "op": "send", "notes": [note]})
+                self.assertEqual(reply["ok"], False)
+                self.assertRegex(reply["error"], "too old for area, group or reference notes.*Copy for agent")
+                self.assertIs(reply["uncertain"], False)
+                rex.assert_not_called()
+        explicit = {**base, "scope": "element", "reference": None}
+        bridge.batch_message({**self.request, "notes": [explicit]})
 
 
 if __name__ == "__main__":

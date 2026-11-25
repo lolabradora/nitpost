@@ -26,6 +26,10 @@ class NoServer(BridgeError):
     pass
 
 
+class Uncertain(BridgeError):
+    """The paste may already have reached the agent."""
+
+
 class Agent(NamedTuple):
     name: str
     pid: int
@@ -153,8 +157,10 @@ def bounded_string(obj, key, limit, *, optional=False):
 def batch_message(request):
     page = bounded_string(request, "page", 16384)
     url = urlsplit(page)
-    if url.scheme not in {"http", "https"} or not url.hostname:
-        raise BridgeError("Choose an HTTP or HTTPS page.")
+    web_page = url.scheme in {"http", "https"} and bool(url.hostname)
+    local_file = url.scheme == "file" and not url.netloc and url.path.startswith("/")
+    if not (web_page or local_file):
+        raise BridgeError("Choose a web page or a local file.")
     notes = request.get("notes")
     if not isinstance(notes, list) or not 1 <= len(notes) <= 50:
         raise BridgeError("Send between 1 and 50 saved notes.")
@@ -162,19 +168,31 @@ def batch_message(request):
     for note in notes:
         if not isinstance(note, dict):
             raise BridgeError("Invalid note.")
+        # This host predates area, group and reference notes. Say so instead of
+        # reporting a missing selector or delivering the note without its image.
+        if note.get("scope", "element") != "element" or any(
+                note.get(key) is not None for key in ("rect", "elements", "reference")):
+            raise BridgeError("This PaneParcel helper is too old for area, group or reference notes. "
+                              "Update the helper or use Copy for agent.")
         item = {
-            "comment": bounded_string(note, "comment", 2000),
-            "selector": bounded_string(note, "selector", 2048),
-            "text": bounded_string(note, "text", 1000, optional=True),
+            "User note": bounded_string(note, "comment", 2000),
+            "Selected element": {
+                "selector": bounded_string(note, "selector", 2048),
+                "text": bounded_string(note, "text", 1000, optional=True),
+            },
         }
+        kind = note.get("kind", "change")
+        if kind not in ("change", "question"):
+            raise BridgeError("Invalid kind in annotation batch.")
+        item["kind"] = kind
         for dim in ("width", "height"):
             if type(note.get(dim)) is not int or not 0 <= note[dim] <= 100000:
                 raise BridgeError("Invalid viewport dimensions.")
-        item["viewport"] = f"{note['width']}x{note['height']}"
+        item["Selected element"]["viewport"] = f"{note['width']}x{note['height']}"
         clean.append(item)
     # A single quoted JSON argument keeps a departing agent from exposing shell
     # syntax or embedded terminal actions to its parent shell. Preserve Unicode.
-    body = json.dumps({"page": page, "notes": clean}, ensure_ascii=False)
+    body = json.dumps({"Source page": page, "notes": clean}, ensure_ascii=False)
     body = re.sub(r"['!\x7f-\x9f\ud800-\udfff\u2028\u2029]", lambda m: "\\u%04x" % ord(m[0]), body)
     return "Web annotations from PaneParcel: '" + body + "'"
 
@@ -210,7 +228,7 @@ def deliver(request):
                 raise BridgeError("The foreground process changed.")
             rex("send-key", "-s", session, "-b", block, "enter")
         except (BridgeError, ValueError) as exc:
-            raise BridgeError("Delivery is uncertain. Check the selected Rex pane before sending again.") from exc
+            raise Uncertain("Delivery is uncertain. Check the selected Rex pane before sending again.") from exc
 
 
 def new_session_label(project, agent, sessions):
@@ -263,33 +281,6 @@ def start(request):
     raise BridgeError(f"{AGENT_TITLES[agent]} did not stay open in the project folder. Check Rex before starting another.")
 
 
-def focus_destination(request):
-    session, block = request.get("session"), request.get("block")
-    if not all(isinstance(value, str) and re.fullmatch(prefix + UUID, value)
-               for prefix, value in (("session:", session), ("block:", block))):
-        raise BridgeError("Choose a valid Rex destination.")
-    info = json.loads(rex("block", "inspect", "-s", session, block, "--json"))
-    window = info["block"]["window_id"]
-    subprocess.run(["/usr/bin/open", "-b", "com.superlogical.rex"], check=True, timeout=5)
-    # A newly opened Rex.app may still be connecting to the local server.
-    for attempt in range(12):
-        clients = json.loads(rex("client", "ls", "--json")).get("clients") or []
-        apps = [c for c in clients if c.get("info", {}).get("name") == "Rex"
-                and c.get("info", {}).get("platform") == "macos"
-                and c.get("principal", {}).get("transport") == "unix"
-                and c.get("connection_state") == "connected"]
-        if apps:
-            client = next((c for c in apps if session in (c.get("session_ids") or [])), apps[0])
-            action = {"client_id": client["client_id"], "action": "session.select",
-                      "args": {"session_id": session, "window_id": window}}
-            rex("api", "call", "client.perform", "-", data=json.dumps(action))
-            rex("focus", "-s", session, block)
-            return
-        if attempt < 11:
-            time.sleep(0.25)
-    raise BridgeError("Rex.app did not connect to the local server.")
-
-
 def receive(stream):
     header = stream.read(HEADER.size)
     if len(header) != HEADER.size:
@@ -314,9 +305,6 @@ def main():
             response = {"ok": True, "project": choose_folder()}
         elif request.get("op") == "start":
             response = {"ok": True, "target": start(request)}
-        elif request.get("op") == "focus":
-            focus_destination(request)
-            response = {"ok": True}
         elif request.get("op") == "send":
             deliver(request)
             response = {"ok": True}
@@ -324,6 +312,10 @@ def main():
             raise BridgeError("Unknown operation.")
     except BridgeError as exc:
         response = {"ok": False, "error": str(exc)}
+        # A send rejected before the paste is definite. Start and unexpected errors stay
+        # unflagged, which the extension reads as uncertain.
+        if request.get("op") == "send":
+            response["uncertain"] = isinstance(exc, Uncertain)
     except (ValueError, KeyError, OSError, TypeError, RecursionError, subprocess.SubprocessError):
         response = {"ok": False, "error": "Invalid data or unavailable local bridge. Refresh destinations and try again."}
     data = json.dumps(response).encode("utf-8")
@@ -333,5 +325,5 @@ def main():
 
 if __name__ == "__main__":
     REX = sys.argv[1]
-    AGENTS = {"codex", "claude", *sys.argv[2:]}
+    AGENTS = {"codex", "claude"}
     main()

@@ -24,10 +24,32 @@ test('prebuilt install, native request, legacy update, reinstall and uninstall',
     return JSON.parse(reply.subarray(4));
   }
   install();
+  const skillSource = fs.readFileSync(path.join(__dirname, '../skills/paneparcel/SKILL.md'));
+  for (const agent of ['codex', 'claude']) {
+    const dest = path.join(home, '.' + agent, 'skills/paneparcel/SKILL.md');
+    assert.equal(fs.existsSync(dest), false);
+    install('--skill', agent);
+    assert.deepEqual(fs.readFileSync(dest), skillSource);
+  }
   const registration = json(manifest);
   assert.equal(registration.type, 'stdio');
   assert.deepEqual(registration.allowed_origins, ['chrome-extension://nbodoigokndfjagdocbaobppgepiflpf/', 'chrome-extension://hjaimaioehmmfbfclcmmphhenealomfp/']);
-  assert.deepEqual(request(registration.path, 'targets'), {ok: true, starts: [], targets: []});
+  // The packaged helper is the pinned dist archive. CI packages it from this source first, so
+  // there it must speak the current protocol. A local checkout may hold an earlier archive.
+  const current = request(registration.path, 'capabilities').payload === 2;
+  if (!current) {
+    assert.ok(!process.env.CI, 'The packaged helper predates this source. Run scripts/package.sh first.');
+    t.diagnostic('dist archive predates this source: route checks and screenshot cleanup on uninstall were not exercised');
+  }
+  const listed = request(registration.path, 'targets');
+  assert.equal(listed.ok, true);
+  assert.deepEqual(listed.targets, []);
+  assert.deepEqual(listed.starts, []);
+  if (current) {
+    assert.deepEqual(listed.checks.map(check => [check.route, check.found, check.eligible]),
+      [['claude', 0, 0], ['codex', 0, 0], ['tmux', 0, 0], ['rex', 0, 0]]);
+    for (const check of listed.checks) assert.ok(check.detail.length > 20 && !check.detail.includes(home), check.route);
+  }
   assert.equal(request(registration.path, 'invalid').ok, false);
   assert.equal(json(path.join(root, 'extension/manifest.json')).key, json(path.join(__dirname, '../extension/manifest.json')).key);
   const shipped = path.join(__dirname, '../extension');
@@ -50,9 +72,15 @@ test('prebuilt install, native request, legacy update, reinstall and uninstall',
   assert.throws(() => install('--extension-dir',other), /different extension/);
   assert.deepEqual(fs.readdirSync(other), ['manifest.json']);
   const uninstall = () => execFileSync(registration.path, ['register', 'uninstall'], {env});
+  const cache = path.join(home, 'Library/Caches/com.micovi.paneparcel');
+  const shots = path.join(cache, 'shots');
+  fs.mkdirSync(shots, {recursive: true});
+  fs.writeFileSync(path.join(shots, 'note-a.jpg'), 'image');
+  fs.writeFileSync(path.join(shots, 'note-reference-b.jpg'), 'image');
   uninstall();
   assert.equal(fs.existsSync(manifest), false);
   assert.equal(fs.existsSync(registration.path), false);
+  if (current) assert.equal(fs.existsSync(shots), false);
   const origin = 'chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/';
   fs.writeFileSync(manifest, JSON.stringify({...registration, path: path.join(root, 'launch'), allowed_origins: [origin]}));
   fs.writeFileSync(path.join(root,'launch'), "#!/bin/sh\nexec python -I '" + root + "/bridge.py' '/fixture/Rex CLI' opencode\n");
