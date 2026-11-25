@@ -19,7 +19,8 @@ function worker(native, values = {}, browser = {}) {
     scripting: {executeScript: async () => {}},
     tabs: {
       captureVisibleTab: browser.capture ?? (async () => { throw new Error('No capture'); }),
-      get: async id => ({id, active: browser.stillActive?.() ?? true})
+      get: async id => ({id, active: browser.stillActive?.() ?? true}),
+      create: browser.create ?? (async details => { browser.opened?.push(clone(details)); })
     },
     runtime: {
       id: 'nitpost', sendNativeMessage: async (_, request) => native(clone(request)),
@@ -40,7 +41,11 @@ function worker(native, values = {}, browser = {}) {
       remove: async key => { delete values[key]; }
     }}
   };
-  vm.runInNewContext(source, {chrome, URL, setTimeout, clearTimeout, btoa, console, ...browser.globals});
+  const navigator = {userAgentData: {
+    platform: 'macOS', brands: [{brand: 'Not?A_Brand', version: '99'}, {brand: 'Chromium', version: '151'}]
+  }};
+  const globals = {chrome, URL, setTimeout, clearTimeout, btoa, console, navigator, ...browser.globals};
+  vm.runInNewContext(source, globals);
   return (op, fields = {}, page = 'https://example.test/p', tab = {}) => new Promise(resolve => {
     const sender = {id: 'nitpost', frameId: 0, tab: {id: 3, active: true, windowId: 7, ...tab}, url: page};
     listener({op, page, ...fields}, sender, reply => resolve(clone(reply))); // Replies come from another realm.
@@ -1288,4 +1293,102 @@ test('an uninstall page Chrome refuses is logged and leaves the worker running',
   assert.equal(warnings.length, 1);
   assert.match(warnings[0][0], /uninstall/);
   assert.equal(warnings[0][1].message, 'Invalid URL');
+});
+
+const reportHead = '- Nitpost: 0.3.0-beta.2\n- Browser: Chrome 151 on macOS\n';
+const reportFoot = '\n\n## What happened\n\n';
+
+// What a report says, read back from the one address the worker opened.
+function reportOf(opened) {
+  assert.equal(opened.length, 1);
+  assert.deepEqual(Object.keys(opened[0]), ['url']);
+  const url = new URL(opened[0].url);
+  assert.equal(url.origin + url.pathname, 'https://github.com/lolabradora/nitpost/issues/new');
+  assert.deepEqual([...url.searchParams.keys()], ['title', 'body']);
+  return {href: url.href, title: url.searchParams.get('title'), body: url.searchParams.get('body')};
+}
+
+test('a problem report lists versions and the helper state, then leaves room to write', async () => {
+  const opened = [];
+  const request = worker(async () => current, {}, {opened});
+  assert.deepEqual(await request('report', {connection: 'connected'}), {ok: true});
+  const report = reportOf(opened);
+  assert.equal(report.title, 'Problem with Nitpost 0.3.0-beta.2');
+  assert.equal(report.body, reportHead + '- Helper: connected' + reportFoot);
+});
+
+test('a problem report after a failed send carries nothing from the page, the notes or the destination', async () => {
+  const opened = [];
+  const secret = 'https://intranet.example.test/billing/invoices?customer=4411#q3';
+  const failure = 'No pane at /Users/sam/clients/acme-rebrand for conversation Acme pricing review';
+  const request = worker(helper({ok: false, error: failure, uncertain: false}), {}, {opened});
+  const add = fields => request('add', {note: fields}, secret);
+  await add({...note('a'), selector: '#invoice-total > span.amount', text: 'Total due 9,120 EUR',
+    comment: 'Hide the discount row', image: jpeg, reference: pasted});
+  await add({...groupNote('g'), comment: 'Tighten these two fields'});
+  await add({...areaNote('r'), comment: 'Margin under the header'});
+  const destination = {session: 'session:6f1c2a', block: 'block:9d7e41', label: 'Acme pricing review',
+    identity: 'codex:5512', project: '/Users/sam/clients/acme-rebrand'};
+  const sent = await request('send', {ids: ['a', 'g', 'r'], target: destination}, secret);
+  assert.equal(sent.attempt.status, 'failed');
+  assert.equal(sent.attempt.detail, failure);
+  assert.equal((await request('state', {}, secret)).notes.length, 3);
+
+  assert.equal((await request('report', {connection: 'error'}, secret)).ok, true);
+  const report = reportOf(opened);
+  assert.equal(report.body, reportHead + '- Helper: error\n- Last send: failed, Rex' + reportFoot);
+  const text = report.href + decodeURIComponent(report.href.replaceAll('+', ' '));
+  const leaks = ['intranet', 'billing', 'invoices', 'customer', '4411', 'q3', 'invoice-total', 'span.amount',
+    '#name', '#email', 'Total due', '9,120', 'Name', 'Email', 'discount', 'Tighten', 'Margin', '2400',
+    '/Users', 'sam', 'clients', 'acme', 'Acme', 'pricing', '6f1c2a', '9d7e41', '5512', 'No pane',
+    '/9j/', 'data:image', 'base64'];
+  for (const leak of leaks) assert.equal(text.includes(leak), false, leak);
+  assert.ok(report.href.length < 600, String(report.href.length));
+});
+
+test('a problem report quotes a failure only when the wording is the extension’s own', async () => {
+  const opened = [];
+  const request = worker(async () => { throw new Error('Specified native messaging host not found.'); }, {}, {opened});
+  await request('add', {note: {...note('a'), image: jpeg}});
+  const sent = await request('send', {ids: ['a'], target: {agent: 'codex', project: '/work/site'}});
+  assert.equal(sent.attempt.status, 'failed');
+  await request('report', {connection: 'missing'});
+  assert.equal(reportOf(opened).body, reportHead + '- Helper: missing\n- Last send: failed, new Rex session\n'
+    + '- Last send message: Install the Nitpost helper on your Mac, then try again.' + reportFoot);
+});
+
+test('a problem report names the kind of destination and never its session', async () => {
+  const kinds = {'claude-inbox': 'Claude Code inbox', 'codex-server': 'Codex thread', tmux: 'tmux',
+    'session:abc': 'Rex', 'fake-session': 'other', constructor: 'other'};
+  for (const [session, kind] of Object.entries(kinds)) {
+    const opened = [];
+    const record = {at: Date.now(), status: 'unconfirmed', ids: ['a'], count: 1, detail: 'Posted to /work/site.',
+      target: {label: 'Review', project: '/work/site', session, block: 'b:1'}};
+    const request = worker(async () => current, {[attemptKey]: record}, {opened});
+    await request('report', {connection: 'connected'});
+    assert.equal(reportOf(opened).body,
+      reportHead + '- Helper: connected\n- Last send: unconfirmed, ' + kind + reportFoot);
+  }
+});
+
+test('the tab cannot choose where a problem report opens or what it says', async () => {
+  const opened = [];
+  const request = worker(async () => current, {}, {opened});
+  const planted = {url: 'https://evil.example/', title: 'planted', body: 'planted', attempt: {status: 'planted'}};
+  assert.equal((await request('report', {connection: 'unchecked', ...planted})).ok, true);
+  const report = reportOf(opened);
+  assert.equal(report.body, reportHead + '- Helper: unchecked' + reportFoot);
+  assert.equal(report.href.includes('planted') || report.href.includes('evil'), false);
+
+  for (const connection of [undefined, 'https://evil.example/', 'connected\n- Page: /secret', ['missing'], '']) {
+    const refused = await request('report', {connection});
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /Reopen the list/);
+  }
+  assert.equal(opened.length, 1);
+});
+
+test('a problem report Chrome could not open says so', async () => {
+  const request = worker(async () => current, {}, {create: async () => { throw new Error('No current window'); }});
+  assert.deepEqual(await request('report', {connection: 'connected'}), {ok: false, error: 'No current window'});
 });

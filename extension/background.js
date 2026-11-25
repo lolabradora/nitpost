@@ -24,6 +24,16 @@ const referenceUnsaved = 'Chrome’s storage for Nitpost is full, so the referen
   + 'Remove notes or screenshots you no longer need, then paste it again.';
 const superseded = 'This page was sent again or settled in another tab. Reopen the list to see where it stands.';
 const interrupted = 'Chrome stopped Nitpost before the helper answered. Check the destination before sending again.';
+const unreachableHelper = 'Could not reach the Nitpost helper. '
+  + 'Check the installation and refresh destinations.';
+const unconfirmedDelivery = 'The companion did not confirm delivery. '
+  + 'Check the destination before sending again.';
+const issueForm = 'https://github.com/lolabradora/nitpost/issues/new';
+const connections = ['checking', 'connected', 'missing', 'unreachable', 'error', 'unchecked'];
+// A session is one of these route names, or an identifier that a problem report must not carry.
+const routeKinds = {
+  'claude-inbox': 'Claude Code inbox', 'codex-server': 'Codex thread', tmux: 'tmux'
+};
 const uninstallPage = 'https://lolabradora.github.io/nitpost/uninstalled.html';
 const manifest = chrome.runtime.getManifest();
 const version = manifest.version_name ?? manifest.version;
@@ -239,8 +249,7 @@ async function callHost(request) {
     if (error?.connection) throw error;
     const missing = /not found|forbidden/i.test(error?.message ?? '');
     throw missing ? hostFailure(installHelper, 'missing')
-      : hostFailure('Could not reach the Nitpost helper. Check the installation and refresh destinations.',
-        'unreachable');
+      : hostFailure(unreachableHelper, 'unreachable');
   } finally {
     clearTimeout(timer);
   }
@@ -540,8 +549,7 @@ async function deliver(plan) {
         + 'Check the destination before sending again.'};
     }
     if (error.connection === 'unreachable') {
-      return {status: 'unknown',
-        detail: 'The companion did not confirm delivery. Check the destination before sending again.'};
+      return {status: 'unknown', detail: unconfirmedDelivery};
     }
     return {status: error.uncertain ? 'unknown' : 'failed', detail: error.message};
   }
@@ -612,7 +620,44 @@ async function send(page, message) {
   return settle(page, plan, record, await deliver(plan));
 }
 
-const operations = {state, select, add, edit, images, remove, resolve, send};
+function routeKind(session) {
+  if (session === null) return 'new Rex session';
+  if (Object.hasOwn(routeKinds, session)) return routeKinds[session];
+  return String(session).startsWith('session:') ? 'Rex' : 'other';
+}
+
+// The major version and the operating system, which is all of the user agent a report needs.
+function browserName() {
+  const {brands, platform} = navigator.userAgentData;
+  const major = brands.find(item => item.brand === 'Chromium')?.version ?? 'unknown version';
+  return ('Chrome ' + major + ' on ' + platform).slice(0, 60);
+}
+
+// The whole of a problem report. A failure the helper worded can name a folder or a conversation,
+// so only the extension's own fixed sentences are quoted, and a destination is reduced to its kind.
+function reportUrl({release, browser, connection, attempt}) {
+  const lines = ['- Nitpost: ' + release, '- Browser: ' + browser, '- Helper: ' + connection];
+  if (attempt) {
+    lines.push('- Last send: ' + attempt.status + ', ' + routeKind(attempt.target?.session));
+    const quotable = [installHelper, unreachableHelper, unconfirmedDelivery, interrupted];
+    if (quotable.includes(attempt.detail)) lines.push('- Last send message: ' + attempt.detail);
+  }
+  const url = new URL(issueForm);
+  url.searchParams.set('title', 'Problem with Nitpost ' + release);
+  url.searchParams.set('body', lines.join('\n') + '\n\n## What happened\n\n');
+  return url.href;
+}
+
+// The address is built here from what the worker itself knows. The tab contributes one word from
+// a fixed list, so a page can neither choose where the new tab goes nor put its text in the report.
+async function report(page, message) {
+  const {connection} = message;
+  requireValue(connections.includes(connection), 'Reopen the list, then report the problem again.');
+  const known = {release: version, browser: browserName(), connection, attempt: page.attempt};
+  await chrome.tabs.create({url: reportUrl(known)});
+}
+
+const operations = {state, select, add, edit, images, remove, resolve, send, report};
 
 function requirePage(message, sender) {
   requireValue(sender.id === chrome.runtime.id && sender.tab && sender.frameId === 0, 'Unsupported sender.');

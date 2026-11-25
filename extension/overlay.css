@@ -338,6 +338,15 @@ button.key:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--ring-hov
 .fact dd p { margin-top: 6px; }
 .checks { display: grid; gap: 4px; margin-top: 6px; }
 .checks strong { color: var(--ink); font-weight: 600; }
+/* Set on the facts' columns. The pill's padding is pulled back so its label meets theirs. */
+.report {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
+  margin: 9px 0 0 -8px;
+}
+.report .quiet { justify-self: start; white-space: nowrap; }
 .copy-text {
   field-sizing: fixed;
   height: 132px;
@@ -524,6 +533,8 @@ select:disabled { color: var(--muted); background: #f3f1f5; }
   .dock { bottom: 12px; }
   .toolbar .mark { display: none; }
   .fact { grid-template-columns: minmax(0, 1fr); gap: 1px; }
+  .report { grid-template-columns: minmax(0, 1fr); gap: 1px; }
+  .report span { padding-left: 8px; }
   /* The wrapped toolbar takes about 230px. The panel may use what is left above it. */
   .panel, .copybox { max-height: max(34dvh, 100dvh - 262px); padding: 11px 13px 12px; }
 }
