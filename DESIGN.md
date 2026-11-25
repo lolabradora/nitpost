@@ -1,5 +1,5 @@
 ---
-name: PaneParcel
+name: Nitpost
 description: Public website design for the Chrome-to-agent annotation workflow.
 colors:
   violet: "#6b40c8"
@@ -148,7 +148,7 @@ components:
     rounded: "{rounded.window}"
 ---
 
-# PaneParcel design system
+# Nitpost design system
 
 ## Overview
 
@@ -156,7 +156,7 @@ components:
 
 The public website is a warm paper page with one working exhibit in the middle of it. A centered headline sits above a wide gradient stage. On that stage a sample browser and a simulated agent terminal play the product's whole sequence on a loop: open the toolbar, pick an element, write a note, choose a conversation, send. The note travels across the stage as a small parcel and lands in the terminal. The visitor can stop the loop and run the same sequence by hand.
 
-Everything outside the stage is quiet. Text is graphite on paper, cards are white with a one-pixel ring, actions are pills, and machine text (JSON, shell commands, terminal output) sits on dark surfaces in monospace. The gradient returns once, as the closing slab. The shop inside the demo keeps its own identity, with a serif title and a lilac sculpture, so the visitor can see where the sample page ends and PaneParcel's controls begin.
+Everything outside the stage is quiet. Text is graphite on paper, cards are white with a one-pixel ring, actions are pills, and machine text (JSON, shell commands, terminal output) sits on dark surfaces in monospace. The gradient returns once, as the closing slab. The shop inside the demo keeps its own identity, with a serif title and a lilac sculpture, so the visitor can see where the sample page ends and Nitpost's controls begin.
 
 **Key Characteristics:**
 
@@ -349,7 +349,7 @@ Motion is a feature of this page, concentrated in the demo. Arrivals and state c
 
 ### Don't:
 
-- **Don't** carry the example shop’s serif face into PaneParcel navigation, headings, or body text.
+- **Don't** carry the example shop’s serif face into Nitpost navigation, headings, or body text.
 - **Don't** use the gradient field on text, buttons, or cards, or add a third field to the page.
 - **Don't** use violet as a page button fill or as decoration; it marks selection, focus, and active state.
 - **Don't** put prose on night surfaces.

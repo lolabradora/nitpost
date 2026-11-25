@@ -134,7 +134,7 @@ def choose_folder():
     # A static Standard Additions dialog needs no Finder automation permission.
     script = """activate
 try
-    return POSIX path of (choose folder with prompt "Choose a project folder for PaneParcel")
+    return POSIX path of (choose folder with prompt "Choose a project folder for Nitpost")
 on error number -128
     return ""
 end try"""
@@ -172,7 +172,7 @@ def batch_message(request):
         # reporting a missing selector or delivering the note without its image.
         if note.get("scope", "element") != "element" or any(
                 note.get(key) is not None for key in ("rect", "elements", "reference")):
-            raise BridgeError("This PaneParcel helper is too old for area, group or reference notes. "
+            raise BridgeError("This Nitpost helper is too old for area, group or reference notes. "
                               "Update the helper or use Copy for agent.")
         item = {
             "User note": bounded_string(note, "comment", 2000),
@@ -194,11 +194,11 @@ def batch_message(request):
     # syntax or embedded terminal actions to its parent shell. Preserve Unicode.
     body = json.dumps({"Source page": page, "notes": clean}, ensure_ascii=False)
     body = re.sub(r"['!\x7f-\x9f\ud800-\udfff\u2028\u2029]", lambda m: "\\u%04x" % ord(m[0]), body)
-    return "Web annotations from PaneParcel: '" + body + "'"
+    return "Web annotations from Nitpost: '" + body + "'"
 
 
 def lock_file(name):
-    directory = Path.home() / "Library/Caches/com.micovi.paneparcel"
+    directory = Path.home() / "Library/Caches/com.micovi.nitpost"
     directory.mkdir(parents=True, exist_ok=True)
     return (directory / name).open("a")
 
@@ -255,7 +255,7 @@ def start(request):
     prompt = batch_message(request)
     executable = shutil.which(agent)
     if not executable:
-        raise BridgeError(f"Install {AGENT_TITLES[agent]} and rerun the PaneParcel installer from your terminal.")
+        raise BridgeError(f"Install {AGENT_TITLES[agent]} and rerun the Nitpost installer from your terminal.")
     try:
         # Two Chrome profiles can start a session simultaneously. Hold the name
         # reservation until Rex has registered the new session on its server.

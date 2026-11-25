@@ -19,7 +19,7 @@ fn home() -> Result<PathBuf> {
     ))
 }
 fn support() -> Result<PathBuf> {
-    Ok(home()?.join("Library/Application Support/PaneParcel"))
+    Ok(home()?.join("Library/Application Support/Nitpost"))
 }
 fn string<'a>(obj: &'a Value, key: &str) -> Result<&'a str> {
     obj[key].as_str().with_context(|| format!("Missing {key}"))
@@ -168,7 +168,7 @@ const SHOT_LIFETIME: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 const MAX_OFFSET: i64 = 100_000_000;
 
 fn shots_dir() -> Result<PathBuf> {
-    Ok(home()?.join("Library/Caches/com.micovi.paneparcel/shots"))
+    Ok(home()?.join("Library/Caches/com.micovi.nitpost/shots"))
 }
 fn decode_base64(text: &str) -> Result<Vec<u8>> {
     let mut bytes = Vec::with_capacity(text.len() / 4 * 3);
@@ -346,7 +346,7 @@ impl Batch {
                 body.push(c);
             }
         }
-        Ok(format!("Web annotations from PaneParcel: '{body}'"))
+        Ok(format!("Web annotations from Nitpost: '{body}'"))
     }
 }
 fn batch(r: &Value) -> Result<Batch> {
@@ -436,7 +436,7 @@ fn dispatch(r: Value) -> Result<Value> {
             Ok(reply)
         }
         "chooseFolder" => {
-            let choice=run("/usr/bin/osascript",&["-e","activate\ntry\nreturn POSIX path of (choose folder with prompt \"Choose a project folder for PaneParcel\")\non error number -128\nreturn \"\"\nend try"],"",300)?;
+            let choice=run("/usr/bin/osascript",&["-e","activate\ntry\nreturn POSIX path of (choose folder with prompt \"Choose a project folder for Nitpost\")\non error number -128\nreturn \"\"\nend try"],"",300)?;
             let p = choice.trim_end_matches('\n');
             Ok(
                 json!({"ok":true,"project":if p.is_empty(){None}else{Some(project(&json!({"project":p}))?)}}),
@@ -510,7 +510,7 @@ mod tests {
     }
     fn parsed(msg: &str) -> Value {
         let words = shlex::split(msg).unwrap();
-        assert_eq!(words[..4], ["Web", "annotations", "from", "PaneParcel:"]);
+        assert_eq!(words[..4], ["Web", "annotations", "from", "Nitpost:"]);
         assert_eq!(words.len(), 5, "the batch must stay one shell argument");
         serde_json::from_str(&words[4]).unwrap()
     }
@@ -840,14 +840,14 @@ mod tests {
     }
     #[test]
     fn a_command_that_never_ran_is_not_an_uncertain_delivery() {
-        let missing = run("/nonexistent/paneparcel-test-tool", &[], "", 1);
+        let missing = run("/nonexistent/nitpost-test-tool", &[], "", 1);
         let reply = failure(
             &uncertain_once_started(missing, "Check the pane.").unwrap_err(),
             true,
         );
         assert_eq!(
             reply,
-            json!({"ok":false,"error":"Could not run /nonexistent/paneparcel-test-tool.",
+            json!({"ok":false,"error":"Could not run /nonexistent/nitpost-test-tool.",
                 "uncertain":false})
         );
         let refused = run("/usr/bin/false", &[], "", 5);

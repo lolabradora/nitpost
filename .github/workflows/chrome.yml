@@ -28,8 +28,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p paneparcel-chrome.zip -p SHA256SUMS
-          grep -E '^[[:xdigit:]]{64}  paneparcel-chrome\.zip$' SHA256SUMS | sha256sum -c -
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p nitpost-chrome.zip -p SHA256SUMS
+          grep -E '^[[:xdigit:]]{64}  nitpost-chrome\.zip$' SHA256SUMS | sha256sum -c -
       - uses: actions/checkout@v4
         with:
           path: source
@@ -41,4 +41,4 @@ jobs:
           CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
           CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
           CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
-        run: python3 source/scripts/submit-chrome.py paneparcel-chrome.zip
+        run: python3 source/scripts/submit-chrome.py nitpost-chrome.zip

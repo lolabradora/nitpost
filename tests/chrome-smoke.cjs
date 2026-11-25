@@ -11,9 +11,9 @@ const {setTimeout: delay} = require('node:timers/promises');
 async function main() {
   const executable = process.argv[2];
   assert.ok(executable, 'Pass the Chrome for Testing executable path');
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'paneparcel-browser-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nitpost-browser-'));
   const support = path.join(home, 'Library/Application Support');
-  const extension = path.join(support, 'PaneParcel/extension');
+  const extension = path.join(support, 'Nitpost/extension');
   const previous = process.argv[3];
   const loaded = previous ? path.join(home, 'existing checkout/extension') : extension;
   const pageFile = path.join(home, 'review.html');
@@ -105,13 +105,13 @@ async function main() {
     const first = await openProfile();
     // The temporary HOME has no agent, so the helper lists nothing and says why for each route.
     async function checkEmptyMachine(profile) {
-      const {checks, ...listed} = await profile.evaluate("chrome.runtime.sendNativeMessage('com.micovi.paneparcel',{op:'targets'})");
+      const {checks, ...listed} = await profile.evaluate("chrome.runtime.sendNativeMessage('com.micovi.nitpost',{op:'targets'})");
       assert.deepEqual(listed, {ok:true, starts:[], targets:[]});
       assert.deepEqual(checks?.map(check => [check.route, check.eligible]), [['claude',0],['codex',0],['tmux',0],['rex',0]],
         'The installed helper predates connection checks. Rebuild dist/ with scripts/package.sh.');
     }
     if (!previous) await checkEmptyMachine(first);
-    else assert.equal((await first.evaluate("chrome.runtime.sendNativeMessage('com.micovi.paneparcel',{op:'fixture'})")).ok, false);
+    else assert.equal((await first.evaluate("chrome.runtime.sendNativeMessage('com.micovi.nitpost',{op:'fixture'})")).ok, false);
     await first.evaluate('chrome.storage.local.set(' + JSON.stringify(state) + ')');
     const closed = once(browser, 'exit');
     browser.kill();

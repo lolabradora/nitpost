@@ -10,8 +10,8 @@ case "$#:${2:-}" in
   1:|2:--update) ;;
   *) echo 'Expected an agent name and optional --update.' >&2; exit 2 ;;
 esac
-source_dir=$(cd "$(dirname "$0")/../skills/paneparcel" && pwd)
-dir="$root/skills/paneparcel"
+source_dir=$(cd "$(dirname "$0")/../skills/nitpost" && pwd)
+dir="$root/skills/nitpost"
 mkdir -p "$dir"
 dest="$dir/SKILL.md"
 if [ -d "$dest" ]; then echo "Expected a file at $dest" >&2; exit 1; fi
@@ -19,7 +19,7 @@ if [ -f "$dest" ] && cmp -s "$source_dir/SKILL.md" "$dest"; then
   echo "Already installed at $dest"
   exit 0
 fi
-tmp=$(mktemp "$dir/.paneparcel.XXXXXX")
+tmp=$(mktemp "$dir/.nitpost.XXXXXX")
 trap 'rm -f "$tmp"' EXIT
 cp "$source_dir/SKILL.md" "$tmp"
 if [ "${2:-}" = --update ]; then

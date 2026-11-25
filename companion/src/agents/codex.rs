@@ -6,7 +6,7 @@ pub(super) fn directory() -> Result<PathBuf> {
         .unwrap_or(home()?.join(".codex")))
 }
 fn socket() -> Result<PathBuf> {
-    Ok(env::var_os("PANEPARCEL_CODEX_SOCKET")
+    Ok(env::var_os("NITPOST_CODEX_SOCKET")
         .map(PathBuf::from)
         .unwrap_or(directory()?.join("app-server-control/app-server-control.sock")))
 }
@@ -72,7 +72,7 @@ impl Server {
         let mut server = Self { socket, id: 0 };
         server.rpc(
             "initialize",
-            json!({"clientInfo":{"name":"paneparcel","version":env!("CARGO_PKG_VERSION")}}),
+            json!({"clientInfo":{"name":"nitpost","version":env!("CARGO_PKG_VERSION")}}),
         )?;
         server.write(json!({"method":"initialized"}))?;
         Ok(server)

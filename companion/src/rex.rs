@@ -30,7 +30,7 @@ fn read(args: &[&str], start: bool, deadline: Option<Instant>) -> Result<Value> 
     Ok(serde_json::from_str(&call(args, "", start, deadline)?)?)
 }
 pub(super) fn lock(name: &str) -> Result<File> {
-    let dir = home()?.join("Library/Caches/com.micovi.paneparcel");
+    let dir = home()?.join("Library/Caches/com.micovi.nitpost");
     fs::create_dir_all(&dir)?;
     let f = OpenOptions::new()
         .append(true)
@@ -105,7 +105,7 @@ pub fn discover() -> Discovery {
     if executable("rex").is_none() {
         return Discovery::none(
             "Rex is not on the helper's PATH; Rex is optional, and after installing it you \
-             rerun the PaneParcel installer to list Rex panes and start new conversations.",
+             rerun the Nitpost installer to list Rex panes and start new conversations.",
         );
     }
     let Ok(sessions) = read(&["ls", "--json"], false, None) else {

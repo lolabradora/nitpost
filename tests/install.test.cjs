@@ -7,13 +7,13 @@ const path = require('node:path');
 const os = require('node:os');
 
 test('prebuilt install, native request, legacy update, reinstall and uninstall', t => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'PaneParcel fresh home '));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'Nitpost fresh home '));
   t.after(() => fs.rmSync(home, {recursive: true, force: true}));
   const env = {HOME: home, PATH: '/usr/bin:/bin:/usr/sbin:/sbin'};
   const install = (...flags) => execFileSync('/bin/sh', [path.join(__dirname, '../install.sh'), ...flags], {env});
   const support = path.join(home, 'Library/Application Support');
-  const root = path.join(support, 'PaneParcel');
-  const manifest = path.join(support, 'Google/Chrome/NativeMessagingHosts/com.micovi.paneparcel.json');
+  const root = path.join(support, 'Nitpost');
+  const manifest = path.join(support, 'Google/Chrome/NativeMessagingHosts/com.micovi.nitpost.json');
   const json = file => JSON.parse(fs.readFileSync(file));
   function request(binary, op) {
     const body = Buffer.from(JSON.stringify({op}));
@@ -24,9 +24,9 @@ test('prebuilt install, native request, legacy update, reinstall and uninstall',
     return JSON.parse(reply.subarray(4));
   }
   install();
-  const skillSource = fs.readFileSync(path.join(__dirname, '../skills/paneparcel/SKILL.md'));
+  const skillSource = fs.readFileSync(path.join(__dirname, '../skills/nitpost/SKILL.md'));
   for (const agent of ['codex', 'claude']) {
-    const dest = path.join(home, '.' + agent, 'skills/paneparcel/SKILL.md');
+    const dest = path.join(home, '.' + agent, 'skills/nitpost/SKILL.md');
     assert.equal(fs.existsSync(dest), false);
     install('--skill', agent);
     assert.deepEqual(fs.readFileSync(dest), skillSource);
@@ -72,7 +72,7 @@ test('prebuilt install, native request, legacy update, reinstall and uninstall',
   assert.throws(() => install('--extension-dir',other), /different extension/);
   assert.deepEqual(fs.readdirSync(other), ['manifest.json']);
   const uninstall = () => execFileSync(registration.path, ['register', 'uninstall'], {env});
-  const cache = path.join(home, 'Library/Caches/com.micovi.paneparcel');
+  const cache = path.join(home, 'Library/Caches/com.micovi.nitpost');
   const shots = path.join(cache, 'shots');
   fs.mkdirSync(shots, {recursive: true});
   fs.writeFileSync(path.join(shots, 'note-a.jpg'), 'image');

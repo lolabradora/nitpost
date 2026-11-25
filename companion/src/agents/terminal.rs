@@ -155,7 +155,7 @@ fn inspect() -> Result<Discovery> {
         )
     } else if executable("tmux").is_none() {
         "Codex is running in a terminal, but tmux is not on the helper's PATH; rerun the \
-         PaneParcel installer from a terminal where tmux works."
+         Nitpost installer from a terminal where tmux works."
             .into()
     } else {
         "Codex is running in a terminal, but not in the foreground of a tmux pane with a saved \
@@ -186,7 +186,7 @@ fn deliver(
     rediscover: impl FnOnce() -> Vec<Value>,
 ) -> Result<()> {
     let p = string(t, "pane")?;
-    let buffer = format!("paneparcel-{}", std::process::id());
+    let buffer = format!("nitpost-{}", std::process::id());
     tmux(&["load-buffer", "-b", &buffer, "-"], msg)?;
     let paste = tmux(&["paste-buffer", "-p", "-d", "-b", &buffer, "-t", p], "");
     if paste.is_err() {

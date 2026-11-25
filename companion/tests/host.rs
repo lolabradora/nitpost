@@ -56,17 +56,17 @@ impl Sandbox {
         self.dir.path().join(name)
     }
     fn shots(&self) -> PathBuf {
-        self.path("home/Library/Caches/com.micovi.paneparcel/shots")
+        self.path("home/Library/Caches/com.micovi.nitpost/shots")
     }
     fn host(&self) -> Command {
         let path = format!("{}:{}", self.path("bin").display(), SYSTEM_PATH.join(":"));
-        let mut host = Command::new(env!("CARGO_BIN_EXE_paneparcel"));
+        let mut host = Command::new(env!("CARGO_BIN_EXE_nitpost"));
         host.env_clear()
             .env("HOME", self.path("home"))
             .env("PATH", path)
             .env("CLAUDE_CONFIG_DIR", self.path("claude"))
             .env("CODEX_HOME", self.path("codex"))
-            .env("PANEPARCEL_CODEX_SOCKET", self.path("codex.sock"));
+            .env("NITPOST_CODEX_SOCKET", self.path("codex.sock"));
         host
     }
     fn request(&self, body: Value) -> Value {
@@ -121,7 +121,7 @@ fn notes() -> Value {
 // Recovers the batch from the single shell-quoted argument an agent receives.
 fn batch(message: &str) -> Value {
     let (intro, body) = message.split_once('\'').unwrap();
-    assert_eq!(intro, "Web annotations from PaneParcel: ");
+    assert_eq!(intro, "Web annotations from Nitpost: ");
     let body = body.strip_suffix('\'').unwrap();
     assert!(!body.contains('\''));
     serde_json::from_str(body).unwrap()
@@ -388,7 +388,7 @@ fn codex_and_claude_destinations_are_listed_explained_and_delivered_to() {
     let frames = inbox_frames(&inbox);
     assert_eq!(frames.len(), 1);
     assert_eq!(frames[0]["type"], "user");
-    assert_eq!(frames[0]["from"], "PaneParcel");
+    assert_eq!(frames[0]["from"], "Nitpost");
     assert_eq!(frames[0]["message"]["role"], "user");
     assert_batch_content(&sandbox, frames[0]["message"]["content"].as_str().unwrap());
 

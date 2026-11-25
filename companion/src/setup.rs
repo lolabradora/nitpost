@@ -14,7 +14,7 @@ pub fn environment() -> Result<()> {
         "PATH",
         "CODEX_HOME",
         "CLAUDE_CONFIG_DIR",
-        "PANEPARCEL_CODEX_SOCKET",
+        "NITPOST_CODEX_SOCKET",
     ] {
         if let Some(v) = c[k].as_str() {
             env::set_var(k, v);
@@ -63,14 +63,14 @@ fn install_assets(source: &Path, destination: &Path, root: bool) -> Result<()> {
     }
     Ok(())
 }
-const NAME: &str = "com.micovi.paneparcel";
+const NAME: &str = "com.micovi.nitpost";
 pub fn register() -> Result<()> {
     let root = support()?;
     fs::create_dir_all(&root)?;
     // A directory flock serializes install/update/uninstall without leaving a lock file.
     let guard = fs::File::open(&root)?;
     fs2::FileExt::lock_exclusive(&guard)?;
-    let host = root.join("paneparcel");
+    let host = root.join("nitpost");
     let legacy = root.join("launch");
     let manifest = home()?.join(format!(
         "Library/Application Support/Google/Chrome/NativeMessagingHosts/{NAME}.json"
@@ -150,7 +150,7 @@ pub fn register() -> Result<()> {
             .canonicalize()?;
             let old: Value = serde_json::from_slice(
                 &fs::read(directory.join("manifest.json"))
-                    .context("Choose the existing unpacked PaneParcel extension directory")?,
+                    .context("Choose the existing unpacked Nitpost extension directory")?,
             )?;
             let new: Value =
                 serde_json::from_slice(&fs::read(source.join("extension/manifest.json"))?)?;
@@ -183,7 +183,7 @@ pub fn register() -> Result<()> {
             .to_str()
             .context("Invalid PATH")?
     );
-    for k in ["CODEX_HOME", "CLAUDE_CONFIG_DIR", "PANEPARCEL_CODEX_SOCKET"] {
+    for k in ["CODEX_HOME", "CLAUDE_CONFIG_DIR", "NITPOST_CODEX_SOCKET"] {
         if let Ok(path) = env::var(k) {
             ensure!(Path::new(&path).is_absolute(), "Expected absolute {k}");
             cfg[k] = json!(path);
@@ -212,7 +212,7 @@ pub fn register() -> Result<()> {
             origins.push(store);
         }
     }
-    let registration = json!({"name":NAME,"description":"PaneParcel local companion","path":host,"type":"stdio","allowed_origins":origins});
+    let registration = json!({"name":NAME,"description":"Nitpost local companion","path":host,"type":"stdio","allowed_origins":origins});
     install_assets(&source.join("extension"), &root.join("extension"), true)?;
     if let Some(directory) = existing_extension {
         if directory != root.join("extension").canonicalize()? {
@@ -226,6 +226,6 @@ pub fn register() -> Result<()> {
     )?;
     atomic(&host, &fs::read(env::current_exe()?)?, 0o700)?;
     atomic(&manifest, &serde_json::to_vec_pretty(&registration)?, 0o600)?;
-    println!("Registered PaneParcel. In chrome://extensions enable Developer mode, then Load unpacked and select:\n{}\nExisting users: reload your existing extension from its original updated folder to keep drafts.",root.join("extension").display());
+    println!("Registered Nitpost. In chrome://extensions enable Developer mode, then Load unpacked and select:\n{}\nExisting users: reload your existing extension from its original updated folder to keep drafts.",root.join("extension").display());
     Ok(())
 }
