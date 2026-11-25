@@ -13,6 +13,7 @@ function stringWithin(value, maxLength) {
 }
 
 function destinationScope(url) {
+  if (url.protocol === 'file:') return new URL('.', url).href;
   const parts = url.pathname.split('/').filter(Boolean);
   if (url.hostname === 'github.com' && parts.length >= 2) {
     return url.origin + '/' + parts.slice(0, 2).join('/').toLowerCase();
@@ -32,8 +33,10 @@ function validateTarget(target, project) {
     return {agent: target.agent, project: validateProject(project)};
   }
   requireValue(stringWithin(target.session, 160) && stringWithin(target.block, 160)
-    && stringWithin(target.label, 1024), 'Choose a Rex conversation.');
+    && stringWithin(target.label, 1024), 'Choose a listed conversation.');
   const result = {session: target.session, block: target.block, label: target.label};
+  if (stringWithin(target.identity, 160)) result.identity = target.identity;
+  if (typeof target.focusable === 'boolean') result.focusable = target.focusable;
   if (project) result.project = validateProject(project);
   return result;
 }
@@ -67,17 +70,21 @@ async function callHost(request) {
       throw new Error('Install the PaneParcel helper on your Mac, then try again.');
     }
     throw new Error(['start', 'send'].includes(request.op)
-      ? 'Rex did not confirm delivery. Check the destination before sending again.'
+      ? 'The companion did not confirm delivery. Check the destination before sending again.'
       : 'Could not reach the PaneParcel helper. Check the installation and refresh destinations.');
   }
-  requireValue(result?.ok === true, result?.error || 'The Rex helper returned an unexpected response.');
+  requireValue(result?.ok === true, result?.error || 'The companion returned an unexpected response.');
   return result;
 }
 
 async function handle(message, sender) {
   requireValue(sender.id === chrome.runtime.id && sender.tab && sender.frameId === 0, 'Unsupported sender.');
   const url = new URL(message.page);
-  requireValue(['http:', 'https:'].includes(url.protocol) && url.origin === new URL(sender.url).origin,
+  const source = new URL(sender.url);
+  const samePage = url.protocol === 'file:'
+    ? source.protocol === 'file:' && !url.host && !source.host && url.pathname === source.pathname
+    : ['http:', 'https:'].includes(url.protocol) && url.origin === source.origin;
+  requireValue(samePage,
     'Reload the page to annotate it.');
   const pageKey = 'notes:' + url.href;
   const scope = destinationScope(url);
@@ -130,11 +137,12 @@ async function handle(message, sender) {
       const route = starting
         ? {op: 'start', agent: destination.agent, project}
         : {op: 'send', session: destination.session, block: destination.block};
+      if (destination.identity) route.identity = destination.identity;
       if (!starting && project) route.project = project;
       const delivered = await callHost({
         ...route, page: url.href, notes: selected.map(({id, ...note}) => note)
       });
-      const remaining = notes.filter(item => !message.ids.includes(item.id));
+      const remaining = delivered.keepNotes ? notes : notes.filter(item => !message.ids.includes(item.id));
       let target = destination;
       try {
         if (starting) {
@@ -143,19 +151,19 @@ async function handle(message, sender) {
         }
         await storage.set({...preference(scopeKey, project, target, recentProjects), [pageKey]: remaining});
       } catch {
-        throw new Error('Rex accepted the notes, but Chrome could not save the result. Check the conversation before retrying.');
+        throw new Error('The companion accepted the batch, but Chrome could not save the result. Check the conversation before retrying.');
       }
       if (!remaining.length) await storage.remove(pageKey).catch(() => {});
       // Focus is a separate operation after delivery has been recorded. A window
       // activation failure must never invite a duplicate send.
-      if (message.focus === true) {
+      if (message.focus === true && target.focusable !== false) {
         try {
-          await callHost({op: 'focus', session: target.session, block: target.block});
+          await callHost({op: 'focus', session: target.session, block: target.block, project, identity: target.identity});
         } catch {
-          return {ok: true, target, focusFailed: true};
+          return {ok: true, target, notice: delivered.notice, focusFailed: true};
         }
       }
-      return {ok: true, target};
+      return {ok: true, target, notice: delivered.notice};
     }
     default:
       throw new Error('Unknown annotation action.');
@@ -171,4 +179,20 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     .catch(() => {}); // The originating tab may close before we reply.
   if (!discovery) pending = reply;
   return true;
+});
+
+chrome.action.onClicked.addListener(async tab => {
+  if (tab.id == null) return;
+  const tabId = tab.id;
+  try {
+    await chrome.scripting.executeScript({target: {tabId}, files: ['content.js']});
+    await chrome.action.setBadgeText({tabId, text: ''});
+    await chrome.action.setTitle({tabId, title: 'Annotate this page with PaneParcel'});
+  } catch {
+    const title = tab.url?.startsWith('file:')
+      ? 'Enable Allow access to file URLs in PaneParcel’s extension details.'
+      : 'PaneParcel cannot annotate this page. Open a web page or local HTML file.';
+    await chrome.action.setTitle({tabId, title});
+    await chrome.action.setBadgeText({tabId, text: '!'});
+  }
 });

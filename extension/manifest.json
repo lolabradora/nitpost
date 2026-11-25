@@ -1,28 +1,18 @@
 {
   "manifest_version": 3,
   "name": "PaneParcel",
-  "version": "0.2.1",
+  "version": "0.3.0.1",
   "description": "Annotate web pages and send your notes to Claude Code or Codex in Rex.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnQmaDIErxdgye+lXsoQOVBN3Un5HdDWiUaRUt4JdcqT1xsr6Uku5wJ78YZrU05aB2OMwPHfLgk1C1bd9qLV4sLP7nDybMfnTHUR/BuF3CE2vS/bmvB2obDIPDcmNLU88oGdiEVwBVND7anEW6kQEOEVUvsnt4/XeMAyJG7DULRy6/wBYEeiTzOgOAZSlDHMMkCQ5Br8uxZJYsbPbnUiADRAy8Krp/bEj1OMUVxGVy//oN9xu8EQUTiaKgNQ101bxTIy7Yrmmyu6XJ/mKIWiE0EGcZ5GWd45hurojgLFOLBRPoOguQ0CYlSI7IZzX9arm3txcbKQp9cvxArOfxfMGAQIDAQAB",
   "permissions": [
     "storage",
-    "nativeMessaging"
+    "nativeMessaging",
+    "scripting",
+    "activeTab"
   ],
   "background": {
     "service_worker": "background.js"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ],
   "web_accessible_resources": [
     {
       "resources": [
@@ -30,8 +20,30 @@
       ],
       "matches": [
         "http://*/*",
-        "https://*/*"
+        "https://*/*",
+        "file:///*"
       ]
     }
-  ]
+  ],
+  "icons": {
+    "16": "icons/paneparcel-16.png",
+    "24": "icons/paneparcel-24.png",
+    "32": "icons/paneparcel-32.png",
+    "48": "icons/paneparcel-48.png",
+    "128": "icons/paneparcel-128.png"
+  },
+  "action": {
+    "default_title": "Annotate this page with PaneParcel",
+    "default_icon": {
+      "16": "icons/paneparcel-16.png",
+      "24": "icons/paneparcel-24.png",
+      "32": "icons/paneparcel-32.png",
+      "48": "icons/paneparcel-48.png",
+      "128": "icons/paneparcel-128.png"
+    }
+  },
+  "optional_host_permissions": [
+    "file:///*"
+  ],
+  "version_name": "0.3.0-beta.1"
 }

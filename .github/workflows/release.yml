@@ -1,0 +1,96 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: ci
+    runs-on: macos-15
+    environment: release
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and sign when a Developer ID certificate is configured
+        env:
+          SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          PANE_PARCEL_SIGN_IDENTITY: ${{ vars.MACOS_SIGN_IDENTITY }}
+        run: |
+          if [[ -z "$SIGN_P12$SIGN_PASSWORD$PANE_PARCEL_SIGN_IDENTITY" ]]; then exit 0; fi
+          : "${SIGN_P12:?}" "${SIGN_PASSWORD:?}" "${PANE_PARCEL_SIGN_IDENTITY:?}"
+          umask 077
+          keychain="$RUNNER_TEMP/build.keychain-db"
+          cert="$RUNNER_TEMP/cert.p12"
+          pass=$(openssl rand -hex 24)
+          trap 'rm -f "$cert"; security delete-keychain "$keychain" || true' EXIT
+          printf '%s' "$SIGN_P12" | base64 -D > "$cert"
+          security create-keychain -p "$pass" "$keychain"
+          security unlock-keychain -p "$pass" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security import "$cert" -k "$keychain" -P "$SIGN_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$pass" "$keychain"
+          rustup target add aarch64-apple-darwin
+          sh scripts/package.sh
+          node --test tests/install.test.cjs
+      - name: Verify signed release candidate
+        run: sh scripts/verify-release.sh "$GITHUB_REF_NAME"
+      - name: Notarize with Apple when configured
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ vars.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ vars.ASC_ISSUER_ID }}
+        run: |
+          if [[ -z "$ASC_KEY_P8$ASC_KEY_ID$ASC_ISSUER_ID" && "$GITHUB_REF_NAME" == *-beta.* ]]; then
+            echo 'Developer ID signed. This beta has not been notarized; macOS Gatekeeper may prevent it from opening.' > "$RUNNER_TEMP/signing.txt"
+            exit 0
+          fi
+          : "${ASC_KEY_P8:?Apple notarization credentials missing}" "${ASC_KEY_ID:?}" "${ASC_ISSUER_ID:?}"
+          umask 077
+          key="$RUNNER_TEMP/notary.p8"
+          trap 'rm -f "$key"' EXIT
+          printf '%s' "$ASC_KEY_P8" > "$key"
+          xcrun notarytool submit dist/paneparcel-notary.zip --key "$key" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait --timeout 30m --output-format json > "$RUNNER_TEMP/notary.json"
+          jq -e '.status == "Accepted"' "$RUNNER_TEMP/notary.json"
+          echo 'Developer ID signed and accepted by Apple for notarization.' > "$RUNNER_TEMP/signing.txt"
+      - name: Publish the verified macOS installer and Chrome package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          notes="$RUNNER_TEMP/release.md"
+          # shellcheck disable=SC2016,SC2129
+          {
+            printf 'PaneParcel for Apple Silicon Macs and Google Chrome. Rex is optional.\n\n'
+            cat "$RUNNER_TEMP/signing.txt"
+            printf '\n```sh\ncurl -fsSL https://github.com/%s/releases/download/%s/install.sh | /bin/sh\n```\n' "$GITHUB_REPOSITORY" "$tag"
+            printf '\nIn Chrome, enable Developer mode, choose **Load unpacked**, then select `~/Library/Application Support/PaneParcel/extension`. See the [installation and upgrade guide](https://github.com/%s/blob/%s/README.md).\n' "$GITHUB_REPOSITORY" "$tag"
+          } > "$notes"
+          files=(install.sh dist/paneparcel-macos-arm64.tar.gz dist/paneparcel-chrome.zip)
+          shasum -a 256 "${files[@]}" | sed 's|  dist/|  |' > SHA256SUMS
+          if gh release view "$tag" --json isDraft >/dev/null 2>&1; then
+            test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
+          else
+            gh release create "$tag" --verify-tag --draft --title "PaneParcel ${tag#v}" --notes-file "$notes"
+          fi
+          gh release upload "$tag" "${files[@]}" SHA256SUMS --clobber
+          flags=(--latest)
+          if [[ "$tag" == *-* ]]; then flags=(--prerelease --latest=false); fi
+          gh release edit "$tag" --draft=false "${flags[@]}" --notes-file "$notes"
+  chrome:
+    if: vars.CWS_AUTO_SUBMIT == 'true'
+    needs: publish
+    uses: ./.github/workflows/chrome.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

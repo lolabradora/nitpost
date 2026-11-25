@@ -1,0 +1,35 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: ['**']
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build Apple Silicon package
+        run: |
+          test "$(uname -m)" = arm64
+          rustup target add aarch64-apple-darwin
+          sh scripts/package.sh
+      - name: Run Rust, extension, installer and migration tests
+        run: |
+          cargo test --locked --manifest-path companion/Cargo.toml
+          node --test tests/*.test.cjs
+          python3 -m unittest discover -s host
+      - name: Test the toolbar and native host in Chrome
+        run: |
+          url=$(curl -fsSL https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | jq -er '.channels.Stable.downloads.chrome[] | select(.platform=="mac-arm64") | .url')
+          curl -fLsS "$url" -o "$RUNNER_TEMP/chrome.zip"
+          ditto -x -k "$RUNNER_TEMP/chrome.zip" "$RUNNER_TEMP/cft"
+          chrome="$RUNNER_TEMP/cft/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+          node tests/chrome-smoke.cjs "$chrome"
+          node tests/chrome-smoke.cjs "$chrome" "$GITHUB_WORKSPACE"

@@ -1,0 +1,44 @@
+name: Chrome Web Store
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published GitHub release tag
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: chrome-web-store
+  cancel-in-progress: false
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    environment: chrome-web-store
+    timeout-minutes: 15
+    steps:
+      - name: Download the published ZIP and verify its checksum
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p paneparcel-chrome.zip -p SHA256SUMS
+          grep -E '^[[:xdigit:]]{64}  paneparcel-chrome\.zip$' SHA256SUMS | sha256sum -c -
+      - uses: actions/checkout@v4
+        with:
+          path: source
+          persist-credentials: false
+      - name: Upload and submit for Chrome Web Store review
+        env:
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          CWS_ITEM_ID: ${{ vars.CWS_ITEM_ID }}
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: python3 source/scripts/submit-chrome.py paneparcel-chrome.zip

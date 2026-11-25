@@ -1,13 +1,12 @@
 // The page owns the document. Keep controls, note text and their event handlers in a closed shadow tree.
 (async () => {
+  if (globalThis.togglePaneParcel) {
+    await globalThis.togglePaneParcel();
+    return;
+  }
   const host = document.createElement('div');
   const shadow = host.attachShadow({ mode: 'closed' });
   const stylesheet = new CSSStyleSheet();
-  const css = await fetch(chrome.runtime.getURL('overlay.css'));
-  if (!css.ok) return;
-  stylesheet.replaceSync(await css.text());
-  shadow.adoptedStyleSheets = [stylesheet];
-
   function element(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -46,7 +45,7 @@
   status.setAttribute('aria-live', 'polite');
   dock.append(surface, status);
   shadow.append(shield, outline, dock);
-  document.documentElement.append(host);
+
 
   let page = location.href;
   let mode = 'idle';
@@ -130,42 +129,54 @@
     const picking = next === 'pick';
     shield.hidden = !picking;
     outline.hidden = true;
+    dock.dataset.mode = next;
     dock.classList.toggle('panel', next === 'edit' || next === 'review');
     surface.replaceChildren();
     message();
   }
 
-  function refreshLauncher() {
-    const launcher = surface.querySelector('.launch');
-    if (!launcher) return;
-    launcher.replaceChildren(icon(pen), notes.length ? 'Page notes' : 'Annotate');
-    if (notes.length) launcher.append(element('span', 'count', String(notes.length)));
-  }
-
   function idle(restore = false) {
     draft = null;
     setMode('idle');
-    const launcher = button('Annotate', async () => {
-      const currentPage = page;
+    host.remove();
+    if (restore && previousFocus?.isConnected) focus(previousFocus);
+  }
+
+  async function toggle() {
+    routeChanged();
+    if (busy) return;
+    if (host.isConnected) {
+      idle(true);
+      return;
+    }
+    previousFocus = document.activeElement;
+    await run(async () => {
+      if (!shadow.adoptedStyleSheets.length) {
+        const css = await fetch(chrome.runtime.getURL('overlay.css'));
+        if (!css.ok) throw new Error('Reload PaneParcel to open the picker.');
+        stylesheet.replaceSync(await css.text());
+        shadow.adoptedStyleSheets = [stylesheet];
+      }
+      document.documentElement.append(host);
+      pick();
       await loadState();
-      if (page !== currentPage) return;
-      if (notes.length) await review();
-      else pick();
-    }, 'launch');
-    surface.append(launcher);
-    refreshLauncher();
-    if (restore) focus(launcher);
+      if (notes.length && host.isConnected) await review();
+    });
   }
 
   function pick() {
-    previousFocus = document.activeElement === host ? null : document.activeElement;
     setMode('pick');
     const bar = element('div', 'pickbar');
-    const cancel = button('Cancel', () => notes.length ? review() : idle(true));
-    bar.append(icon(pen), element('span', '', 'Pick an element'), cancel);
+    bar.setAttribute('aria-label', 'PaneParcel element picker');
+    const instructions = element('div', 'instructions');
+    instructions.append(element('strong', '', 'Click an element to annotate'),
+      element('span', '', 'Or press Tab to choose, then Enter.'));
+    const exit = button('Esc', () => idle(true));
+    exit.setAttribute('aria-label', 'Exit annotation mode');
+    bar.append(icon(pen), instructions, exit);
     surface.append(bar);
-    if (previousFocus instanceof HTMLElement) previousFocus.focus({preventScroll: true});
-    else document.activeElement?.blur();
+    bar.setAttribute('role', 'status');
+    if (document.activeElement === host) document.activeElement.blur();
   }
 
   function underPointer(event) {
@@ -363,6 +374,7 @@
     const row = element('div', 'destination');
     row.append(folder.select, button('Refresh projects and conversations', () => review(), 'icon', refresh));
     let available = [];
+    let starts = [];
     let chosen = null;
     let loading = true;
     let saving = false;
@@ -377,8 +389,8 @@
       try {
         const result = await request('send', {ids: notes.map(note => note.id), target: chosen, focus: focusRex});
         if (currentPage === page) {
-          const notice = 'Sent to ' + result.target.label + '.';
-          await review(result.focusFailed ? notice + ' Open this pane manually in Rex.' : notice);
+          const notice = result.notice || ('Sent to ' + result.target.label + '.');
+          await review(result.focusFailed ? notice + ' Open the destination manually.' : notice);
         }
       } finally {
         saving = false;
@@ -402,7 +414,7 @@
         return option(duplicate ? value : name, value);
       };
       folder.select.replaceChildren(option(loading ? 'Loading projects…' : 'Choose a project', '', true));
-      appendGroup(folder.select, 'Active in Rex', active.map(projectOption));
+      appendGroup(folder.select, 'Active conversations', active.map(projectOption));
       appendGroup(folder.select, 'Recent folders', recent.map(projectOption));
       folder.select.append(option('Choose folder…', 'browse'));
       folder.select.value = project || '';
@@ -414,11 +426,12 @@
       conversation.select.replaceChildren(option(project ? 'Choose a conversation' : 'Choose a project first', '', true));
       if (project) {
         const matches = available.filter(item => item.project === project);
-        appendGroup(conversation.select, 'Running in Rex', matches.map(item => option(item.label, item.block)));
-        appendGroup(conversation.select, 'Start in this folder', Object.entries(agentNames)
+        appendGroup(conversation.select, 'Open conversations', matches.map(item => option(item.label, item.block)));
+        appendGroup(conversation.select, 'Start a new session in Rex', Object.entries(agentNames).filter(([id]) => starts.includes(id))
           .map(([id, name]) => option('New ' + name + ' session', id)));
-        chosen = matches.find(item => item.block === target?.block && item.session === target?.session)
-          || (target?.project === project && !target.block && Object.hasOwn(agentNames, target.agent) ? target : null);
+        chosen = matches.find(item => item.block === target?.block && item.session === target?.session
+          && (!target.identity || item.identity === target.identity))
+          || (target?.project === project && !target.block && starts.includes(target.agent) ? target : null);
       }
       conversation.select.value = chosen?.block || chosen?.agent || '';
       updateControls();
@@ -428,12 +441,13 @@
       folder.select.disabled = loading || saving;
       conversation.select.disabled = loading || saving || !project;
       send.disabled = loading || saving || !chosen;
-      reveal.disabled = send.disabled;
+      reveal.disabled = send.disabled || chosen?.focusable === false;
       const action = chosen && !chosen.block ? 'Start & send' : 'Send';
       send.textContent = action + ' in background';
-      reveal.textContent = chosen && !chosen.block ? 'Start, send & focus Rex' : 'Send + focus Rex';
+      reveal.textContent = chosen?.focusable === false ? 'Focus unavailable' : action + ' + focus';
+      if (chosen?.session === 'codex-queue') send.textContent = 'Queue for later';
       send.title = action + ' ' + count + ' and stay in Chrome';
-      reveal.title = action + ' ' + count + ' and open the destination in Rex';
+      reveal.title = action + ' ' + count + ' and show the destination';
     }
 
     async function saveChoice(nextProject, nextTarget) {
@@ -482,6 +496,9 @@
       const result = await request('targets');
       if (!send.isConnected || currentPage !== page) return;
       available = result.targets;
+      starts = result.starts ?? Object.keys(agentNames); // Older Rex-only helper.
+      const help = element('p', 'muted', 'Claude needs a local peer inbox. Codex live delivery needs an idle shared thread or a ready, supported terminal pane. Queue for later can require reopening Codex. New sessions require Rex.');
+      surface.insertBefore(help, delivery);
       // Older versions remembered the pane IDs alone. Resolve its current folder by both IDs.
       if (!project && target?.block) {
         project = available.find(item => item.block === target.block && item.session === target.session)?.project || null;
@@ -516,8 +533,7 @@
     } else if (mode !== 'idle' && event.key === 'Escape' && (mode === 'pick' || event.target === host)) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (mode === 'edit' && notes.length) void run(() => review());
-      else idle(true);
+      idle(true);
     }
   }, true);
 
@@ -530,13 +546,13 @@
     target = null;
     project = null;
     idle();
-    void loadState().then(refreshLauncher).catch(() => {});
+
     return true;
   }
   window.navigation?.addEventListener('currententrychange', routeChanged);
   window.addEventListener('pageshow', routeChanged);
   window.addEventListener('hashchange', routeChanged);
   window.addEventListener('popstate', routeChanged);
-  idle();
-  await loadState().then(refreshLauncher).catch(() => {});
+  globalThis.togglePaneParcel = toggle;
+  await toggle();
 })();

@@ -7,6 +7,7 @@ const source = fs.readFileSync(require.resolve('../extension/background.js'), 'u
 function worker(native, values = {}) {
   let listener;
   const chrome = {
+    action: {onClicked: {addListener() {}}},
     runtime: {
       id: 'paneparcel', sendNativeMessage: (_, request) => native(request),
       onMessage: {addListener(callback) { listener = callback; }}
@@ -159,4 +160,35 @@ test('failure to focus leaves a confirmed delivery and cannot resend the same ba
   assert.equal(result.focusFailed, true);
   assert.equal((await send()).ok, false);
   assert.deepEqual(operations, ['send', 'focus']);
+});
+
+test('local files keep notes per URL and destinations per folder', async () => {
+  const sent = [];
+  const request = worker(async message => { sent.push(message); return {ok: true}; });
+  const page = 'file:///Users/test/site/index.html';
+  await request('add', {note: note('a')}, page);
+  await request('select', {target}, page);
+  const sibling = await request('state', {}, 'file:///Users/test/site/about.html');
+  assert.equal(sibling.target.block, target.block);
+  assert.equal(sibling.notes.length, 0);
+  assert.equal((await request('state', {}, 'file:///Users/test/other/index.html')).target, null);
+  assert.equal((await request('state', {page: 'file:///different/file.html'}, page)).ok, false);
+  assert.equal((await request('send', {ids: ['a'], target}, page)).ok, true);
+  assert.equal(sent[0].page, page);
+});
+
+test('peer inbox preserves confirmation wording and never tries GUI focus', async () => {
+  const calls = [];
+  const request = worker(async msg => {
+    calls.push(msg);
+    return {ok: true, notice: 'Posted to the inbox.', keepNotes: true};
+  });
+  const inbox = {session: 'claude-inbox', block: 'claude-inbox:id:123', project: '/test', label: 'My terminal', focusable: false};
+  await request('add', {note: note('a')});
+  const result = await request('send', {ids: ['a'], target: inbox, focus: true});
+  assert.equal(result.notice, 'Posted to the inbox.');
+  assert.deepEqual(calls.map(c => c.op), ['send']);
+  assert.equal(calls[0].block, inbox.block);
+  assert.equal((await request('state')).target.focusable, false);
+  assert.equal((await request('state')).notes.length, 1);
 });
