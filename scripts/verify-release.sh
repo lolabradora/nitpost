@@ -19,4 +19,5 @@ codesign -dv --verbose=4 "$tmp/paneparcel" 2>&1 | grep -q '^Timestamp='
 unzip -p dist/paneparcel-notary.zip paneparcel | cmp - "$tmp/paneparcel"
 diff -qr -x .DS_Store extension "$tmp/extension"
 unzip -q dist/paneparcel-chrome.zip -d "$tmp/store"
-diff -qr -x .DS_Store extension "$tmp/store"
+jq 'del(.key)' extension/manifest.json > "$tmp/extension/manifest.json"
+diff -qr "$tmp/extension" "$tmp/store"

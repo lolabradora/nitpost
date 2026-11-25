@@ -20,7 +20,7 @@ asset=paneparcel-macos-arm64.tar.gz
 COPYFILE_DISABLE=1 /usr/bin/tar -czf "$tmp/$asset" -C "$tmp" paneparcel extension
 mv "$tmp/$asset" "dist/$asset"
 (cd "$tmp" && /usr/bin/zip -q paneparcel-notary.zip paneparcel)
-(cd "$tmp/extension" && /usr/bin/zip -qr ../paneparcel-chrome.zip .)
+sh scripts/package-chrome.sh "$tmp/paneparcel-chrome.zip"
 mv "$tmp/paneparcel-notary.zip" "$tmp/paneparcel-chrome.zip" dist/
 hash=$(shasum -a 256 "dist/$asset" | cut -d ' ' -f1)
 sed -i '' "s/^    digest=.*/    digest=$hash/" install.sh

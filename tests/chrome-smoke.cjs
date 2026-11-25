@@ -69,7 +69,7 @@ async function main() {
       async function worker() {
         for (let i = 0; i < 50; i++) {
           const {targetInfos} = await rpc('Target.getTargets');
-          const target = targetInfos.find(t => t.url === url);
+          const target = targetInfos.find(t => t.type === 'service_worker' && t.url === url);
           if (target) return {...await rpc('Target.attachToTarget', {targetId: target.targetId, flatten: true}), targetId: target.targetId};
           await delay(150);
         }
@@ -80,6 +80,10 @@ async function main() {
           .then(r => {assert.ok(!r.exceptionDetails, r.exceptionDetails?.exception?.description); return r.result.value;});
       }
       const active = await worker();
+      for (let i = 0; i < 50; i++) {
+        if (await evaluate(active, "typeof chrome !== 'undefined' && !!chrome.runtime?.id")) break;
+        await delay(100);
+      }
       async function checkToolbar() {
         const {targetInfos} = await rpc('Target.getTargets', {filter:[{}]});
         const tab = targetInfos.find(info => info.type === 'tab' && info.url === pageUrl);
