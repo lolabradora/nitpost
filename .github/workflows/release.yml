@@ -55,9 +55,7 @@ jobs:
             # A maintainer may have already submitted these exact signed bytes.
             binary="$RUNNER_TEMP/paneparcel"
             tar -xzf dist/paneparcel-macos-arm64.tar.gz -C "$RUNNER_TEMP" paneparcel
-            codesign --verify --strict --check-notarization "$binary"
-            assessment=$(spctl --assess --type execute --verbose=4 "$binary" 2>&1) || { echo "$assessment"; exit 1; }
-            grep -Fx 'source=Notarized Developer ID' <<< "$assessment"
+            codesign --verify --strict --check-notarization -R='notarized' "$binary"
             echo 'Developer ID signed and notarized by Apple.' > "$RUNNER_TEMP/signing.txt"
             exit 0
           fi
