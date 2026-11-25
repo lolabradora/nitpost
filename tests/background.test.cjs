@@ -23,6 +23,8 @@ function worker(native, values = {}, browser = {}) {
     },
     runtime: {
       id: 'nitpost', sendNativeMessage: async (_, request) => native(clone(request)),
+      getManifest: () => browser.manifest ?? {version: '0.3.0.2', version_name: '0.3.0-beta.2'},
+      setUninstallURL: browser.setUninstallURL ?? (async () => {}),
       onMessage: {addListener(callback) { listener = callback; }}
     },
     storage: {local: {
@@ -38,7 +40,7 @@ function worker(native, values = {}, browser = {}) {
       remove: async key => { delete values[key]; }
     }}
   };
-  vm.runInNewContext(source, {chrome, URL, setTimeout, clearTimeout, btoa, ...browser.globals});
+  vm.runInNewContext(source, {chrome, URL, setTimeout, clearTimeout, btoa, console, ...browser.globals});
   return (op, fields = {}, page = 'https://example.test/p', tab = {}) => new Promise(resolve => {
     const sender = {id: 'nitpost', frameId: 0, tab: {id: 3, active: true, windowId: 7, ...tab}, url: page};
     listener({op, page, ...fields}, sender, reply => resolve(clone(reply))); // Replies come from another realm.
@@ -1266,4 +1268,24 @@ test('editing can clear the stored excerpt but never rewrite it', async () => {
   const wire = JSON.stringify(sent);
   for (const excerpt of ['Save', 'Name', 'Email']) assert.equal(wire.includes('"' + excerpt + '"'), false);
   assert.equal(sent[0].selector, '#save'); // Only the excerpt goes: the selector still identifies the element.
+});
+
+test('every worker start points Chrome at the uninstall page for the installed version', () => {
+  const urls = [];
+  worker(async () => current, {}, {setUninstallURL: async url => { urls.push(url); }});
+  assert.deepEqual(urls, ['https://lolabradora.github.io/nitpost/uninstalled.html?v=0.3.0-beta.2']);
+  worker(async () => current, {}, {manifest: {version: '0.4.0'}, setUninstallURL: async url => { urls.push(url); }});
+  assert.equal(urls[1], 'https://lolabradora.github.io/nitpost/uninstalled.html?v=0.4.0');
+});
+
+test('an uninstall page Chrome refuses is logged and leaves the worker running', async () => {
+  const warnings = [];
+  const request = worker(async () => current, {}, {
+    setUninstallURL: async () => { throw new Error('Invalid URL'); },
+    globals: {console: {warn: (...args) => warnings.push(args)}}
+  });
+  assert.equal((await request('state')).ok, true);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0][0], /uninstall/);
+  assert.equal(warnings[0][1].message, 'Invalid URL');
 });

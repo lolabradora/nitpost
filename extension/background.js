@@ -24,6 +24,9 @@ const referenceUnsaved = 'Chrome’s storage for Nitpost is full, so the referen
   + 'Remove notes or screenshots you no longer need, then paste it again.';
 const superseded = 'This page was sent again or settled in another tab. Reopen the list to see where it stands.';
 const interrupted = 'Chrome stopped Nitpost before the helper answered. Check the destination before sending again.';
+const uninstallPage = 'https://lolabradora.github.io/nitpost/uninstalled.html';
+const manifest = chrome.runtime.getManifest();
+const version = manifest.version_name ?? manifest.version;
 let pending = Promise.resolve();
 let lastAttemptAt = 0;
 
@@ -664,5 +667,9 @@ chrome.action.onClicked.addListener(async tab => {
 
 // The tooltip names the shortcut Chrome has assigned, which the user may have changed or cleared.
 actionTitle().then(title => chrome.action.setTitle({title})).catch(() => {});
+// The address names the installed version and nothing else. That version changes with an update,
+// which restarts the worker, so every start sets it again.
+chrome.runtime.setUninstallURL(uninstallPage + '?v=' + encodeURIComponent(version))
+  .catch(error => console.warn('Nitpost could not set the page Chrome opens after an uninstall.', error));
 // Queued like any other write, so it cannot remove a record a send is about to replace.
 pending = pending.then(sweepAttempts).catch(() => {});
