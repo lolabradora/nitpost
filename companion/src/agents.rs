@@ -39,7 +39,7 @@ fn claude() -> Discovery {
 fn sessions() -> Result<Discovery> {
     if executable("claude").is_none() {
         return Ok(Discovery::none(
-            "Claude Code is not on the helper's PATH; rerun the PaneParcel installer from a \
+            "Claude Code is not on the helper's PATH; rerun the Nitpost installer from a \
              terminal where the claude command works.",
         ));
     }
@@ -171,7 +171,7 @@ fn post_to_inbox(r: &Value, batch: Batch) -> Result<()> {
     stream.set_write_timeout(Some(Duration::from_secs(3)))?;
     // Never copy Claude's own-child token or assert a permission class.
     let msg = batch.message()?;
-    let frame = json!({"type":"user","message":{"role":"user","content":msg},"from":"PaneParcel"});
+    let frame = json!({"type":"user","message":{"role":"user","content":msg},"from":"Nitpost"});
     let mut bytes = serde_json::to_vec(&frame)?;
     bytes.push(b'\n');
     write_frame(&stream, &bytes)

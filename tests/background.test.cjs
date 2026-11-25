@@ -22,7 +22,7 @@ function worker(native, values = {}, browser = {}) {
       get: async id => ({id, active: browser.stillActive?.() ?? true})
     },
     runtime: {
-      id: 'paneparcel', sendNativeMessage: async (_, request) => native(clone(request)),
+      id: 'nitpost', sendNativeMessage: async (_, request) => native(clone(request)),
       onMessage: {addListener(callback) { listener = callback; }}
     },
     storage: {local: {
@@ -40,7 +40,7 @@ function worker(native, values = {}, browser = {}) {
   };
   vm.runInNewContext(source, {chrome, URL, setTimeout, clearTimeout, btoa, ...browser.globals});
   return (op, fields = {}, page = 'https://example.test/p', tab = {}) => new Promise(resolve => {
-    const sender = {id: 'paneparcel', frameId: 0, tab: {id: 3, active: true, windowId: 7, ...tab}, url: page};
+    const sender = {id: 'nitpost', frameId: 0, tab: {id: 3, active: true, windowId: 7, ...tab}, url: page};
     listener({op, page, ...fields}, sender, reply => resolve(clone(reply))); // Replies come from another realm.
   });
 }
@@ -502,7 +502,7 @@ test('when storage is full a screenshot is dropped but a reference or a note is 
   const exhausted = worker(async () => ({ok: true}), none, full(0));
   const withReference = await exhausted('add', {note: {...note('a'), image: jpeg, reference: pasted}});
   assert.match(withReference.error, /reference image was not saved/);
-  assert.match((await exhausted('add', {note: note('b')})).error, /storage for PaneParcel is full/);
+  assert.match((await exhausted('add', {note: note('b')})).error, /storage for Nitpost is full/);
   assert.equal(notesKey in none, false);
 
   const kept = {[notesKey]: [note('a')]};
@@ -648,7 +648,7 @@ test('a missing helper says to install it and an interrupted reply says to check
     const request = worker(async () => { throw new Error(failure); }, {[notesKey]: [note('a')]});
     return request('send', {ids: ['a'], target});
   };
-  assert.match((await send('Specified native messaging host not found.')).error, /Install the PaneParcel helper/);
+  assert.match((await send('Specified native messaging host not found.')).error, /Install the Nitpost helper/);
   assert.match((await send('Error when communicating with the native messaging host.')).error,
     /did not confirm delivery. Check the destination/);
 });
@@ -795,7 +795,7 @@ test('a send interrupted with the worker leaves a pending record that reads as u
   const restarted = worker(helper({ok: true, receipt: 'confirmed'}, delivered), values);
   const state = await restarted('state');
   assert.equal(state.attempt.status, 'unknown');
-  assert.match(state.attempt.detail, /stopped PaneParcel before the helper answered/);
+  assert.match(state.attempt.detail, /stopped Nitpost before the helper answered/);
   assert.deepEqual(state.attempt.ids, ['a']);
   assert.equal(state.attempt.target.label, 'Review');
   assert.equal(state.notes.length, 1);
@@ -868,7 +868,7 @@ test('screenshots reach a helper that accepts them and are left out for an older
   }, stored());
   const reply = await legacy('send', {ids: ['a', 'b'], target});
   assert.equal(older[1].notes.some(item => 'image' in item), false);
-  assert.equal(reply.notice, 'Sent to Review. Screenshots were left out. Update the PaneParcel helper to include them.');
+  assert.equal(reply.notice, 'Sent to Review. Screenshots were left out. Update the Nitpost helper to include them.');
   assert.equal(reply.attempt.detail, reply.notice);
 });
 
@@ -899,8 +899,8 @@ test('area, group and reference notes need a helper with payload 2', async () =>
 });
 
 test('a helper that cannot be asked for its capabilities fails the send before delivery', async () => {
-  for (const [failure, expected] of [['Specified native messaging host not found.', /Install the PaneParcel helper/],
-    ['Native host has exited.', /Could not reach the PaneParcel helper/]]) {
+  for (const [failure, expected] of [['Specified native messaging host not found.', /Install the Nitpost helper/],
+    ['Native host has exited.', /Could not reach the Nitpost helper/]]) {
     const calls = [];
     const values = {[notesKey]: [areaNote('a')]};
     const request = worker(async msg => { calls.push(msg); throw new Error(failure); }, values);
@@ -941,7 +941,7 @@ test('a send that cannot be recorded is not sent', async () => {
   const reply = await request('send', {ids: ['a'], target});
   assert.deepEqual(reply, {
     ok: false, attempt: null,
-    error: 'Nothing was sent. Chrome’s storage for PaneParcel is full. Remove notes or screenshots you no longer need, or use Copy for agent.'
+    error: 'Nothing was sent. Chrome’s storage for Nitpost is full. Remove notes or screenshots you no longer need, or use Copy for agent.'
   });
   assert.equal(calls.length, 0);
   assert.equal(values[notesKey].length, 1);
@@ -1059,11 +1059,11 @@ test('targets reports the helper connection as a state and passes checks through
   })('targets');
   for (const failure of ['Specified native messaging host not found.', 'Access to the specified native messaging host is forbidden.']) {
     assert.deepEqual(await failing(new Error(failure)),
-      {ok: true, connection: 'missing', ...empty, error: 'Install the PaneParcel helper on your Mac, then try again.'});
+      {ok: true, connection: 'missing', ...empty, error: 'Install the Nitpost helper on your Mac, then try again.'});
   }
   assert.deepEqual(await failing(new Error('Native host has exited.')), {
     ok: true, connection: 'unreachable', ...empty,
-    error: 'Could not reach the PaneParcel helper. Check the installation and refresh destinations.'
+    error: 'Could not reach the Nitpost helper. Check the installation and refresh destinations.'
   });
   // The helper ran and refused: that is its own message to show, not a connection problem.
   assert.deepEqual(await failing({ok: false, error: 'Too many destinations.'}),
@@ -1090,14 +1090,14 @@ test('state and the toolbar title name the shortcut Chrome assigned', async () =
   const assigned = {shortcut: '⌥⇧P', titles: []};
   const request = worker(async () => ({ok: true}), {}, assigned);
   assert.equal((await request('state')).shortcut, '⌥⇧P');
-  assert.deepEqual(assigned.titles, [{title: 'Annotate this page with PaneParcel (⌥⇧P)'}]);
+  assert.deepEqual(assigned.titles, [{title: 'Annotate this page with Nitpost (⌥⇧P)'}]);
   await assigned.clicked({id: 3, url: page});
-  assert.deepEqual(assigned.titles[1], {tabId: 3, title: 'Annotate this page with PaneParcel (⌥⇧P)'});
+  assert.deepEqual(assigned.titles[1], {tabId: 3, title: 'Annotate this page with Nitpost (⌥⇧P)'});
 
   const unset = {titles: []};
   const plain = worker(async () => ({ok: true}), {}, unset);
   assert.equal((await plain('state')).shortcut, '');
-  assert.deepEqual(unset.titles, [{title: 'Annotate this page with PaneParcel'}]);
+  assert.deepEqual(unset.titles, [{title: 'Annotate this page with Nitpost'}]);
 });
 
 test('unknown actions and foreign senders are refused', async () => {
@@ -1133,7 +1133,7 @@ test('a helper that never answers a send is given up on, recorded as unknown, an
   await time.advance(1);
   assert.equal(sent.ok, false);
   assert.equal(sent.attempt.status, 'unknown');
-  assert.equal(sent.error, 'The PaneParcel helper did not answer within 2 minutes. The batch may or may not have arrived. '
+  assert.equal(sent.error, 'The Nitpost helper did not answer within 2 minutes. The batch may or may not have arrived. '
     + 'Check the destination before sending again.');
   assert.deepEqual(values[attemptKey], sent.attempt);
   assert.equal(values[notesKey].length, 1);
@@ -1193,7 +1193,7 @@ test('a helper that never answers the capability check fails the send without de
   assert.equal(sent, undefined);
   await time.advance(1);
   assert.equal(sent.attempt.status, 'failed'); // Nothing was handed over.
-  assert.equal(sent.error, 'The PaneParcel helper did not answer within 10 seconds.');
+  assert.equal(sent.error, 'The Nitpost helper did not answer within 10 seconds.');
   assert.deepEqual(calls, ['capabilities']);
   assert.equal((await request('state')).notes.length, 1);
 });
@@ -1211,7 +1211,7 @@ test('a helper that never answers targets is reported as unreachable, and choosi
   await time.advance(1);
   assert.deepEqual(found, {
     ok: true, connection: 'unreachable', targets: [], starts: [], checks: [],
-    error: 'The PaneParcel helper did not answer within 30 seconds. Refresh destinations to try again.'
+    error: 'The Nitpost helper did not answer within 30 seconds. Refresh destinations to try again.'
   });
   await time.advance(3600000);
   assert.equal(folder, undefined); // A person is choosing.

@@ -1,7 +1,7 @@
 // The service worker is the sole writer. Serialize mutations from different tabs
 // so a second tab cannot overwrite a note or send the same batch twice.
 const storage = chrome.storage.local;
-const nativeHost = 'com.micovi.paneparcel';
+const nativeHost = 'com.micovi.nitpost';
 const jpegPrefix = 'data:image/jpeg;base64,';
 // Chrome's local storage holds 10 MB. Cap each image so drafts on many pages still fit,
 // and so 50 notes with both images stay inside the companion's 16 MiB native frame.
@@ -16,14 +16,14 @@ const captureTimeout = 4000;
 const hostLimits = {capabilities: 10000, targets: 30000, send: 120000, start: 120000};
 const attemptRetention = 7 * 24 * 60 * 60 * 1000;
 const attemptStatuses = ['pending', 'confirmed', 'submitted', 'unconfirmed', 'unknown', 'failed'];
-const baseTitle = 'Annotate this page with PaneParcel';
-const installHelper = 'Install the PaneParcel helper on your Mac, then try again.';
-const storageFull = 'Chrome’s storage for PaneParcel is full. '
+const baseTitle = 'Annotate this page with Nitpost';
+const installHelper = 'Install the Nitpost helper on your Mac, then try again.';
+const storageFull = 'Chrome’s storage for Nitpost is full. '
   + 'Remove notes or screenshots you no longer need, then try again.';
-const referenceUnsaved = 'Chrome’s storage for PaneParcel is full, so the reference image was not saved. '
+const referenceUnsaved = 'Chrome’s storage for Nitpost is full, so the reference image was not saved. '
   + 'Remove notes or screenshots you no longer need, then paste it again.';
 const superseded = 'This page was sent again or settled in another tab. Reopen the list to see where it stands.';
-const interrupted = 'Chrome stopped PaneParcel before the helper answered. Check the destination before sending again.';
+const interrupted = 'Chrome stopped Nitpost before the helper answered. Check the destination before sending again.';
 let pending = Promise.resolve();
 let lastAttemptAt = 0;
 
@@ -89,7 +89,7 @@ function validateImage(value, maxLength, message) {
 
 function validateReference(value) {
   return validateImage(value, maxReferenceChars,
-    'Paste a smaller reference image. PaneParcel keeps a JPEG of up to about 90 KB.');
+    'Paste a smaller reference image. Nitpost keeps a JPEG of up to about 90 KB.');
 }
 
 function positiveInteger(value, max) {
@@ -209,7 +209,7 @@ async function capture(message, sender) {
 function unanswered(limit) {
   const seconds = limit / 1000;
   const waited = seconds >= 60 ? seconds / 60 + ' minutes' : seconds + ' seconds';
-  return 'The PaneParcel helper did not answer within ' + waited + '.';
+  return 'The Nitpost helper did not answer within ' + waited + '.';
 }
 
 function hostFailure(message, connection, silent = false) {
@@ -236,7 +236,7 @@ async function callHost(request) {
     if (error?.connection) throw error;
     const missing = /not found|forbidden/i.test(error?.message ?? '');
     throw missing ? hostFailure(installHelper, 'missing')
-      : hostFailure('Could not reach the PaneParcel helper. Check the installation and refresh destinations.',
+      : hostFailure('Could not reach the Nitpost helper. Check the installation and refresh destinations.',
         'unreachable');
   } finally {
     clearTimeout(timer);
@@ -451,7 +451,7 @@ function requireSettled(page, message) {
     {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
   const batch = attempt.count === 1 ? '1 note' : attempt.count + ' notes';
   requireValue(!attempt.ids.some(id => hasNote(page, id)),
-    'PaneParcel tried to send ' + batch + ' from this page to ' + attempt.target.label + ' on ' + when
+    'Nitpost tried to send ' + batch + ' from this page to ' + attempt.target.label + ' on ' + when
     + ' and could not confirm that they arrived. Check there first, then send again only if they are missing.');
 }
 
@@ -487,7 +487,7 @@ async function fitHelper(notes) {
   const extended = notes.some(note => note.scope === 'area' || note.scope === 'group' || note.reference);
   if (!extended && !notes.some(note => note.image)) return {notes, withoutShots: false};
   const helper = await helperCapabilities();
-  requireValue(!extended || helper.payload >= 2, 'This PaneParcel helper cannot receive area notes, '
+  requireValue(!extended || helper.payload >= 2, 'This Nitpost helper cannot receive area notes, '
     + 'grouped elements or reference images. Update the helper, or use Copy for agent.');
   if (helper.shots === true) return {notes, withoutShots: false};
   return {notes: notes.map(({image, ...note}) => note), withoutShots: true};
@@ -549,7 +549,7 @@ async function deliver(plan) {
   }
   const notice = fitted.withoutShots
     ? (reply.notice || 'Sent to ' + target.label + '.')
-      + ' Screenshots were left out. Update the PaneParcel helper to include them.'
+      + ' Screenshots were left out. Update the Nitpost helper to include them.'
     : reply.notice;
   return {status: receiptOf(reply), detail: notice ?? '', target, notice};
 }
@@ -602,7 +602,7 @@ async function send(page, message) {
     // Written before the helper runs, so an interrupted worker leaves a trace of what it was sending.
     await storage.set({[page.attemptKey]: record});
   } catch (error) {
-    const full = 'Chrome’s storage for PaneParcel is full. Remove notes or screenshots you no longer need, '
+    const full = 'Chrome’s storage for Nitpost is full. Remove notes or screenshots you no longer need, '
       + 'or use Copy for agent.';
     return {ok: false, error: 'Nothing was sent. ' + storageError(error, full).message, attempt: page.attempt};
   }
@@ -655,8 +655,8 @@ chrome.action.onClicked.addListener(async tab => {
     await chrome.action.setTitle({tabId, title: await actionTitle()});
   } catch {
     const title = tab.url?.startsWith('file:')
-      ? 'Enable Allow access to file URLs in PaneParcel’s extension details.'
-      : 'PaneParcel cannot annotate this page. Open a web page or local HTML file.';
+      ? 'Enable Allow access to file URLs in Nitpost’s extension details.'
+      : 'Nitpost cannot annotate this page. Open a web page or local HTML file.';
     await chrome.action.setTitle({tabId, title});
     await chrome.action.setBadgeText({tabId, text: '!'});
   }

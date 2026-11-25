@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "PaneParcel",
+  "name": "Nitpost",
   "version": "0.3.0.2",
   "description": "Pick elements on any web page, write notes, and send them to your local Claude Code or Codex conversation.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnQmaDIErxdgye+lXsoQOVBN3Un5HdDWiUaRUt4JdcqT1xsr6Uku5wJ78YZrU05aB2OMwPHfLgk1C1bd9qLV4sLP7nDybMfnTHUR/BuF3CE2vS/bmvB2obDIPDcmNLU88oGdiEVwBVND7anEW6kQEOEVUvsnt4/XeMAyJG7DULRy6/wBYEeiTzOgOAZSlDHMMkCQ5Br8uxZJYsbPbnUiADRAy8Krp/bEj1OMUVxGVy//oN9xu8EQUTiaKgNQ101bxTIy7Yrmmyu6XJ/mKIWiE0EGcZ5GWd45hurojgLFOLBRPoOguQ0CYlSI7IZzX9arm3txcbKQp9cvxArOfxfMGAQIDAQAB",
@@ -27,20 +27,20 @@
     }
   ],
   "icons": {
-    "16": "icons/paneparcel-16.png",
-    "24": "icons/paneparcel-24.png",
-    "32": "icons/paneparcel-32.png",
-    "48": "icons/paneparcel-48.png",
-    "128": "icons/paneparcel-128.png"
+    "16": "icons/nitpost-16.png",
+    "24": "icons/nitpost-24.png",
+    "32": "icons/nitpost-32.png",
+    "48": "icons/nitpost-48.png",
+    "128": "icons/nitpost-128.png"
   },
   "action": {
-    "default_title": "Annotate this page with PaneParcel",
+    "default_title": "Annotate this page with Nitpost",
     "default_icon": {
-      "16": "icons/paneparcel-16.png",
-      "24": "icons/paneparcel-24.png",
-      "32": "icons/paneparcel-32.png",
-      "48": "icons/paneparcel-48.png",
-      "128": "icons/paneparcel-128.png"
+      "16": "icons/nitpost-16.png",
+      "24": "icons/nitpost-24.png",
+      "32": "icons/nitpost-32.png",
+      "48": "icons/nitpost-48.png",
+      "128": "icons/nitpost-128.png"
     }
   },
   "optional_host_permissions": [
@@ -51,7 +51,7 @@
       "suggested_key": {
         "default": "Alt+Shift+P"
       },
-      "description": "Annotate this page with PaneParcel"
+      "description": "Annotate this page with Nitpost"
     }
   },
   "version_name": "0.3.0-beta.2"

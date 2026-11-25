@@ -1,4 +1,4 @@
-"""Install the PaneParcel native host for the current macOS Chrome user."""
+"""Install the Nitpost native host for the current macOS Chrome user."""
 import argparse
 import json
 import os
@@ -9,7 +9,7 @@ import shutil
 import sys
 import tempfile
 
-NAME = "com.micovi.paneparcel"
+NAME = "com.micovi.nitpost"
 DEFAULT_ID = "nbodoigokndfjagdocbaobppgepiflpf"
 
 
@@ -35,7 +35,7 @@ def main():
     if sys.platform != "darwin":
         parser.error("This installer currently supports macOS.")
     support = Path.home() / "Library/Application Support"
-    installed = support / "PaneParcel"
+    installed = support / "Nitpost"
     manifest = support / "Google/Chrome/NativeMessagingHosts" / (NAME + ".json")
     bridge = installed / "bridge.py"
     launcher = installed / "launch"
@@ -44,7 +44,7 @@ def main():
             path.unlink(missing_ok=True)
         if installed.is_dir() and not any(installed.iterdir()):
             installed.rmdir()
-        print("Removed the PaneParcel native host.")
+        print("Removed the Nitpost native host.")
         return
     if not re.fullmatch("[a-p]{32}", args.extension_id):
         parser.error("Expected a 32-character Chrome extension ID (letters a–p).")

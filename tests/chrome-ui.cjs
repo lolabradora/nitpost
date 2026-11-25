@@ -6,7 +6,7 @@
 // Destinations are fakes. The native host is tests/fixtures/fake-host.cjs, registered only in a
 // temporary profile under a temporary HOME, with a PATH of system directories. Nothing here can
 // discover or deliver to a real Claude Code, Codex, tmux or Rex session.
-// Set PANEPARCEL_SHOTS to a directory to keep the screenshots the layout checks and failures take.
+// Set NITPOST_SHOTS to a directory to keep the screenshots the layout checks and failures take.
 const {execFileSync, spawn} = require('node:child_process');
 const crypto = require('node:crypto');
 const {once} = require('node:events');
@@ -22,9 +22,9 @@ const {setTimeout: delay} = require('node:timers/promises');
 const extensionId = 'nbodoigokndfjagdocbaobppgepiflpf';
 const extensionDir = path.join(__dirname, '../extension');
 const fixtures = path.join(__dirname, 'fixtures');
-const hostName = 'com.micovi.paneparcel';
+const hostName = 'com.micovi.nitpost';
 const systemPath = '/usr/bin:/bin:/usr/sbin:/sbin';
-const shotsDir = process.env.PANEPARCEL_SHOTS || null;
+const shotsDir = process.env.NITPOST_SHOTS || null;
 const SHIFT = 8;
 const META = 4;
 const jpegPrefix = 'data:image/jpeg;base64,';
@@ -232,7 +232,7 @@ function fakeHost(home, profile) {
 }
 
 async function launch(executable, {helper = true, extension = extensionDir} = {}) {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'paneparcel-ui-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nitpost-ui-'));
   const profile = path.join(home, 'profile');
   fs.mkdirSync(profile);
   const host = fakeHost(home, profile);
@@ -482,8 +482,8 @@ function overlayView() {
     notes: all('.note').map(noteView),
     editor: editorView(one('.editor')),
     cardTiles: all('.pins .tile').map(tileView),
-    project: listView(one('#paneparcel-project')),
-    target: listView(one('#paneparcel-target')),
+    project: listView(one('#nitpost-project')),
+    target: listView(one('#nitpost-target')),
     focus: focusView(this.activeElement),
     ...panelView(one, all),
   };
@@ -826,12 +826,12 @@ async function choose(page, id, letters) {
 }
 
 async function chooseConversation(page, letters) {
-  await choose(page, 'paneparcel-project', 's');
+  await choose(page, 'nitpost-project', 's');
   await page.when(
     'the project to be chosen',
     view => view.project.value === '/work/site' && !view.target.disabled,
   );
-  await choose(page, 'paneparcel-target', letters);
+  await choose(page, 'nitpost-target', letters);
   return page.when(
     'the conversation to be chosen',
     view =>
@@ -929,7 +929,7 @@ function checkCopiedText(text, url, area) {
   includes(
     'copied text says images stay behind',
     text,
-    'is kept in PaneParcel and is not included in this text.',
+    'is kept in Nitpost and is not included in this text.',
   );
   const areaPart = text.slice(text.indexOf('## 3.'), text.indexOf('## 4.'));
   check('the area note has no selector in the copied text', !areaPart.includes('`'), areaPart);
@@ -1064,7 +1064,7 @@ async function copyAfterInvalidation(ctx) {
     includes(
       'the panel explains the lost connection',
       view.panel,
-      'PaneParcel lost its connection to this tab',
+      'Nitpost lost its connection to this tab',
     );
     equal(
       'the note is still on screen',
@@ -1490,9 +1490,9 @@ async function silentHelper(ctx) {
       'unknown',
     );
     includes(
-      'and says Chrome stopped PaneParcel',
+      'and says Chrome stopped Nitpost',
       view.attempt.text,
-      'Chrome stopped PaneParcel before the helper answered.',
+      'Chrome stopped Nitpost before the helper answered.',
     );
     equal('its note cannot go out with a plain Send', control(view, 'send')?.disabled, true);
   });
@@ -1513,7 +1513,7 @@ async function legacyHelper(ctx) {
     includes(
       'a helper without payload 2 is refused an area note',
       view.attempt.text,
-      'This PaneParcel helper cannot receive area notes, grouped elements or reference images. ' +
+      'This Nitpost helper cannot receive area notes, grouped elements or reference images. ' +
         'Update the helper, or use Copy for agent.',
     );
     equal('nothing was handed to that helper', deliveriesFrom(session, areaUrl), []);
@@ -1634,7 +1634,7 @@ async function doubleActivation(ctx) {
         includes(
           'the second tab is told where and when the batch went',
           late.status,
-          'PaneParcel tried to send 1 note from this page to Codex · site',
+          'Nitpost tried to send 1 note from this page to Codex · site',
         );
       } else {
         equal(
@@ -2157,7 +2157,7 @@ async function savedCrop(session, page, url) {
   return note.image ? imageInfo(page, note.image) : {width: 0, height: 0, corner: null};
 }
 
-// Opens a menu with its trigger, activates PaneParcel and picks one item inside the menu.
+// Opens a menu with its trigger, activates Nitpost and picks one item inside the menu.
 async function pickInMenu(session, ctx, menu, how) {
   const url = ctx.origin + '/shop.html?menu=' + menu.name + '-' + how;
   const label = menu.name + ' menu, ' + how + ': ';
@@ -2836,14 +2836,14 @@ async function keyboardNote(ctx, session) {
   }
   view = await settled(page);
   equal('the list opens with focus on its first control', view.focus?.control, 'pick');
-  await tabTo(page, focus => focus.id === 'paneparcel-project', stops);
+  await tabTo(page, focus => focus.id === 'nitpost-project', stops);
   await page.key('s');
   view = await page.when(
     'the project to be chosen',
     next => next.project.value === '/work/site' && !next.target.disabled,
   );
   await noteLostFocus(page, 'the project');
-  await tabTo(page, focus => focus.id === 'paneparcel-target', stops);
+  await tabTo(page, focus => focus.id === 'nitpost-target', stops);
   await page.key('c');
   view = await page.when(
     'the conversation to be chosen',
@@ -2875,7 +2875,7 @@ async function escapeKey(ctx, session) {
   await page.key('Escape');
   await closedOverlay(page);
   equal(
-    'Escape in the picker closes PaneParcel and returns focus to the page',
+    'Escape in the picker closes Nitpost and returns focus to the page',
     await page.eval('document.activeElement.id'),
     'buy',
   );
@@ -2899,13 +2899,13 @@ async function escapeKey(ctx, session) {
   await page.key('Escape');
   await closedOverlay(page);
   equal(
-    'Escape in the editor of a first note closes PaneParcel and discards the typed comment',
+    'Escape in the editor of a first note closes Nitpost and discards the typed comment',
     await session.stored(notesKey(url)),
     undefined,
   );
   observe(
     'Escape in the editor discards a typed comment without asking. With no saved notes it also ' +
-      'closes PaneParcel.',
+      'closes Nitpost.',
   );
 
   await page.open();
@@ -2918,7 +2918,7 @@ async function escapeKey(ctx, session) {
   await page.key('Escape');
   await closedOverlay(page);
   check(
-    'Escape in the list closes PaneParcel and keeps the note',
+    'Escape in the list closes Nitpost and keeps the note',
     (await session.stored(notesKey(url))).length === 1,
   );
 }
@@ -3167,7 +3167,7 @@ async function pilotRecovery(session, page, third) {
     [1, 'failed'],
   );
   session.host.set({targets: [otherConversation], send: receipts.submitted.reply});
-  await choose(page, 'paneparcel-target', 't');
+  await choose(page, 'nitpost-target', 't');
   await page.when(
     'another conversation to be chosen',
     next => control(next, 'send')?.disabled === false,
@@ -3316,7 +3316,7 @@ function serveCodex(socketPath) {
 
 // Recovers the batch from the single shell-quoted argument an agent receives.
 function batchOf(message) {
-  const intro = "Web annotations from PaneParcel: '";
+  const intro = "Web annotations from Nitpost: '";
   if (!message.startsWith(intro) || !message.endsWith("'"))
     throw new Error('Unexpected message: ' + message.slice(0, 80));
   return JSON.parse(message.slice(intro.length, -1));
@@ -3339,7 +3339,7 @@ function registerCompanion(session, binary) {
     PATH: path.join(sandbox, 'bin') + ':' + systemPath,
     CLAUDE_CONFIG_DIR: path.join(sandbox, 'claude'),
     CODEX_HOME: path.join(sandbox, 'codex'),
-    PANEPARCEL_CODEX_SOCKET: path.join(sandbox, 'codex.sock'),
+    NITPOST_CODEX_SOCKET: path.join(sandbox, 'codex.sock'),
   };
   session.host.register(
     'exec /usr/bin/env -i ' +
@@ -3352,8 +3352,8 @@ function registerCompanion(session, binary) {
   );
   return {
     sandbox,
-    socket: variables.PANEPARCEL_CODEX_SOCKET,
-    shots: path.join(variables.HOME, 'Library/Caches/com.micovi.paneparcel/shots'),
+    socket: variables.NITPOST_CODEX_SOCKET,
+    shots: path.join(variables.HOME, 'Library/Caches/com.micovi.nitpost/shots'),
   };
 }
 
@@ -3393,12 +3393,12 @@ function checkCodexTurn(turn, url, shots) {
 }
 
 async function realCompanion(ctx) {
-  const binary = process.env.PANEPARCEL_COMPANION;
+  const binary = process.env.NITPOST_COMPANION;
   if (!binary) {
     observe(
-      'skipped: set PANEPARCEL_COMPANION to a built companion binary ' +
+      'skipped: set NITPOST_COMPANION to a built companion binary ' +
         '(cargo build --manifest-path companion/Cargo.toml, then ' +
-        'companion/target/debug/paneparcel).',
+        'companion/target/debug/nitpost).',
     );
     return;
   }
@@ -3674,7 +3674,7 @@ async function hostRemoved(session, ctx) {
     'm',
   ]);
   const view = await page.open().catch(() => null);
-  equal('the next toolbar click opens PaneParcel again', view?.mode ?? null, 'pick');
+  equal('the next toolbar click opens Nitpost again', view?.mode ?? null, 'pick');
 }
 
 async function hostilePages(ctx) {
@@ -3709,9 +3709,9 @@ async function workerStopped(ctx) {
       'unknown',
     );
     includes(
-      'and says Chrome stopped PaneParcel',
+      'and says Chrome stopped Nitpost',
       view.attempt.text,
-      'Chrome stopped PaneParcel before the helper answered.',
+      'Chrome stopped Nitpost before the helper answered.',
     );
     equal(
       'the bar stays connected and the note is kept',
@@ -3851,7 +3851,7 @@ async function hungSend(ctx) {
     observe(
       'hung send: for the two minutes the worker waits, a toolbar click on ' +
         (early
-          ? 'another page opens PaneParcel normally.'
+          ? 'another page opens Nitpost normally.'
           : 'any page dims it and shows no control: every request ' +
             'from every tab queues behind the unanswered send until the 120 s limit.'),
     );

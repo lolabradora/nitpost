@@ -34,7 +34,7 @@
         <div class="fd-chrome">
           <span class="fd-lights" aria-hidden="true"><i></i><i></i><i></i></span>
           <span class="fd-address" aria-label="Sample page URL">https://forma.studio/objects/fold</span>
-          <button class="fd-toolbar" type="button" aria-label="Open PaneParcel toolbar icon" aria-pressed="false"><span>Start here</span><img src="toolbar-icon.png" width="26" height="26" alt=""></button>
+          <button class="fd-toolbar" type="button" aria-label="Open Nitpost toolbar icon" aria-pressed="false"><span>Start here</span><img src="toolbar-icon.png" width="26" height="26" alt=""></button>
         </div>
         <div class="fd-store">
           <div class="fd-mast"><span class="fd-brand"><i aria-hidden="true"></i>Forma</span><span>Object collection</span></div>
@@ -96,7 +96,7 @@
     panel.hidden = !docked;
     pickbar.hidden = next !== 'pick';
     toolbar.setAttribute('aria-pressed', String(next !== 'idle'));
-    toolbar.querySelector('span').textContent = next === 'idle' ? 'Start here' : 'PaneParcel';
+    toolbar.querySelector('span').textContent = next === 'idle' ? 'Start here' : 'Nitpost';
     for (const target of targets) {
       target.disabled = next !== 'pick';
       target.classList.remove('fd-hover');
@@ -319,7 +319,7 @@
       await fly(from, token);
       if (terminalName.textContent !== destination) terminalLog.replaceChildren();
       terminalName.textContent = destination;
-      print("Web annotations from PaneParcel: '" + payload + "'", 'fd-msg');
+      print("Web annotations from Nitpost: '" + payload + "'", 'fd-msg');
       await agentReplies(token);
     } catch (error) {
       if (error !== STOPPED) throw error;

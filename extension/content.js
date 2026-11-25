@@ -1,7 +1,7 @@
 // The page owns the document. Keep controls, note text and their event handlers in a closed shadow tree.
 (async () => {
-  if (globalThis.togglePaneParcel) {
-    await globalThis.togglePaneParcel();
+  if (globalThis.toggleNitpost) {
+    await globalThis.toggleNitpost();
     return;
   }
   // A form control named like a DOM property replaces that property on its form, and a named element
@@ -95,7 +95,7 @@
   const copy = 'M9 9h11v11H9z M5 15V4h11';
   const prompts = {change: 'What should change?', question: 'What do you want to know?'};
   const contrast = 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z M12 3v18 M12 8h7.9 M12 12h9 M12 16h7.9';
-  const installGuide = 'https://github.com/lolabradora/paneparcel#install-the-apple-silicon-beta';
+  const installGuide = 'https://github.com/lolabradora/nitpost#install-the-apple-silicon-beta';
   const shortcutSettings = 'chrome://extensions/shortcuts';
   const jpeg = 'data:image/jpeg;base64,';
   const maxReferenceChars = 120000;
@@ -124,7 +124,7 @@
   const panels = element('div', 'panels');
   const status = element('p', 'status');
   const spoken = element('p', 'spoken');
-  // Events on PaneParcel's own controls stop here, so the page's document and bubble-phase window
+  // Events on Nitpost's own controls stop here, so the page's document and bubble-phase window
   // listeners never see them. They are composed events: a capture listener the page put on the window
   // runs before this and still sees the key, click or paste, retargeted to the host element.
   const ownEvents = ['keydown', 'keyup', 'keypress', 'pointerdown', 'pointerup', 'mousedown', 'mouseup',
@@ -214,15 +214,15 @@
 
   // The raw reply. Only a request the extension never answered throws.
   async function exchange(op, params = {}) {
-    if (location.href !== page) throw new Error('The page changed. Reopen PaneParcel here.');
+    if (location.href !== page) throw new Error('The page changed. Reopen Nitpost here.');
     try {
       return await chrome.runtime.sendMessage({ op, page, ...params });
     } catch {
       // A reloaded or updated extension leaves this script without a runtime. Anything else is a
       // service worker that stopped mid-request: the extension and what it stored are still there.
-      if (chrome.runtime?.id) throw new Error('PaneParcel stopped before it answered. Try again.');
+      if (chrome.runtime?.id) throw new Error('Nitpost stopped before it answered. Try again.');
       orphaned = true;
-      throw new Error('PaneParcel disconnected. Reload this tab to reconnect.');
+      throw new Error('Nitpost disconnected. Reload this tab to reconnect.');
     }
   }
 
@@ -308,7 +308,7 @@
       try {
         node.focus({ preventScroll: true });
       } catch {
-        // The page's own element, focused before PaneParcel opened, has its focus method replaced.
+        // The page's own element, focused before Nitpost opened, has its focus method replaced.
       }
     });
   }
@@ -372,7 +372,7 @@
     await run(async () => {
       if (!shadow.adoptedStyleSheets.length) {
         const css = await fetch(chrome.runtime.getURL('overlay.css'));
-        if (!css.ok) throw new Error('Reload PaneParcel to open the picker.');
+        if (!css.ok) throw new Error('Reload Nitpost to open the picker.');
         stylesheet.replaceSync(await css.text());
         shadow.adoptedStyleSheets = [stylesheet];
         void loadFont();
@@ -398,14 +398,14 @@
     try {
       const file = await fetch(chrome.runtime.getURL('fonts/geist-latin.woff2'));
       if (!file.ok) return;
-      const face = new FontFace('PaneParcel Geist', await file.arrayBuffer(), {weight: '100 900'});
+      const face = new FontFace('Nitpost Geist', await file.arrayBuffer(), {weight: '100 900'});
       document.fonts.add(await face.load());
     } catch {
       return;
     }
   }
 
-  // A modal dialog makes everything outside it inert, PaneParcel's controls included.
+  // A modal dialog makes everything outside it inert, Nitpost's controls included.
   function modalOpen() {
     try {
       return Boolean(find(document, 'dialog:modal'));
@@ -427,12 +427,12 @@
       message('The page’s dialog blocks this editor. Close the dialog, for example with Esc, then write your '
         + 'note. The screenshot is already taken.', true);
     } else {
-      message('A dialog on this page blocks PaneParcel’s buttons until it closes. You can still pick inside '
+      message('A dialog on this page blocks Nitpost’s buttons until it closes. You can still pick inside '
         + 'the dialog: click an element, or press Tab, then Enter.', true);
     }
   }
 
-  // What the pointer rests on when picking starts without a click on PaneParcel, as it does after the
+  // What the pointer rests on when picking starts without a click on Nitpost, as it does after the
   // keyboard shortcut. A menu that only exists while hovered must keep its hover to be picked.
   function hovered() {
     const limit = window.innerWidth * window.innerHeight * 0.35;
@@ -486,18 +486,18 @@
     return pickWords[pickMode].lead;
   }
 
-  // The shortcut opens PaneParcel without a click on the toolbar, which would close a menu that closes on blur.
+  // The shortcut opens Nitpost without a click on the toolbar, which would close a menu that closes on blur.
   function shortcutHint() {
     if (!shortcut) {
       return control(button('Set a shortcut', async () => {
         const copied = await copyText(shortcutSettings, 'The address of Chrome’s shortcut settings');
         message((copied ? 'Copied ' + shortcutSettings + '. Paste it in the address bar' : 'Open ' + shortcutSettings)
-          + ' and choose a key for PaneParcel. A shortcut opens it without closing an open menu.');
+          + ' and choose a key for Nitpost. A shortcut opens it without closing an open menu.');
       }, 'quiet'), 'set-shortcut');
     }
     const hint = element('span', 'hint shortcut-hint');
     hint.append(element('span', 'key shortcut-key', shortcut), element('span', '', 'opens this'));
-    hint.title = 'Opens and closes PaneParcel. Open menus stay open. Change the key at ' + shortcutSettings + '.';
+    hint.title = 'Opens and closes Nitpost. Open menus stay open. Change the key at ' + shortcutSettings + '.';
     return hint;
   }
 
@@ -513,7 +513,7 @@
     const bar = element('div', 'pickbar');
     bar.dataset.pick = pickMode;
     bar.setAttribute('role', 'group');
-    bar.setAttribute('aria-label', 'PaneParcel picker');
+    bar.setAttribute('aria-label', 'Nitpost picker');
     const instructions = element('div', 'instructions');
     const keyboard = control(keyHint(pickWords[pickMode].keys, 'Tab', '↵'), 'keyboard-hint');
     instructions.append(element('strong', '', pickLead()), keyboard);
@@ -570,7 +570,7 @@
     return new DOMRect(area.x - window.scrollX, area.y - window.scrollY, area.width, area.height);
   }
 
-  // A selection target is a page element or an {area} object PaneParcel made. Only the latter has an area.
+  // A selection target is a page element or an {area} object Nitpost made. Only the latter has an area.
   function areaOf(item) {
     return item && !(item instanceof Node) ? item.area : null;
   }
@@ -1133,7 +1133,7 @@
     return width >= 1 && height >= 1 ? {x, y, width, height} : null;
   }
 
-  // The screenshot shows the page as the reviewer saw it, without PaneParcel on top.
+  // The screenshot shows the page as the reviewer saw it, without Nitpost on top.
   async function capture(crop) {
     host.toggleAttribute('data-capture', true);
     try {
@@ -1230,11 +1230,11 @@
   const openPopover = selectable(':popover-open') ? ':popover-open' : null;
 
   // The page node a pointer event in pick mode refers to. Undefined means the event is not the picker's:
-  // it is on PaneParcel's own controls. Page nodes get events directly while the shield lets them through.
+  // it is on Nitpost's own controls. Page nodes get events directly while the shield lets them through.
   function pointed(event) {
     if (mode !== 'pick' || !event.isTrusted || !host.isConnected) return undefined;
     if (event.target !== host) return event.target instanceof Element ? event.target : null;
-    // Enter or Space on one of PaneParcel's buttons makes a click at 0,0 with no pointer behind it.
+    // Enter or Space on one of Nitpost's buttons makes a click at 0,0 with no pointer behind it.
     // Its coordinates say nothing about where it happened, so it is never a pick.
     if (event.type === 'click' && event.detail === 0) return undefined;
     if (shadow.elementFromPoint(event.clientX, event.clientY) !== shield) return undefined;
@@ -1474,7 +1474,7 @@
     if (page !== currentPage) return;
     pick();
     if (note.image && !result.shot) {
-      message('Saved without the screenshot, because Chrome’s storage for PaneParcel is full.');
+      message('Saved without the screenshot, because Chrome’s storage for Nitpost is full.');
     }
   }
 
@@ -1558,7 +1558,7 @@
     pinned.find(item => item.id === note.id)?.box.classList.add('editing');
     editor.dataset.scope = scopeOf(note);
     const input = element('textarea');
-    input.id = 'paneparcel-comment';
+    input.id = 'nitpost-comment';
     input.setAttribute('aria-label', 'Comment');
     input.maxLength = 2000;
     input.value = draft.comment;
@@ -1634,7 +1634,7 @@
     if (note.shot) kept.push('a screenshot of ' + subject + ' now');
     if (note.ref) kept.push('a reference image of the wanted result');
     if (!kept.length) return '- Images: none.';
-    const verbs = kept.length === 1 ? ' is kept in PaneParcel and is' : ' are kept in PaneParcel and are';
+    const verbs = kept.length === 1 ? ' is kept in Nitpost and is' : ' are kept in Nitpost and are';
     return '- Images: ' + kept.join(' and ') + verbs + ' not included in this text.';
   }
 
@@ -1659,7 +1659,7 @@
   // Built from the notes already in memory, so it needs no helper, no destination and no extension.
   function notesMarkdown() {
     const head = ['# Page feedback', '', 'Page: ' + page,
-      plural(notes.length, 'note') + ' written with PaneParcel. Selectors are CSS selectors on that page.'];
+      plural(notes.length, 'note') + ' written with Nitpost. Selectors are CSS selectors on that page.'];
     return [head.join('\n'), ...notes.map(noteMarkdown)].join('\n\n') + '\n';
   }
 
@@ -1713,7 +1713,7 @@
     const references = notes.filter(note => note.ref).length;
     const kept = [shots && plural(shots, 'screenshot'), references && plural(references, 'reference image')].filter(Boolean);
     const images = kept.length ? ' Images are not part of the text: ' + kept.join(' and ')
-      + (shots + references === 1 ? ' stays' : ' stay') + ' in PaneParcel.' : '';
+      + (shots + references === 1 ? ' stays' : ' stay') + ' in Nitpost.' : '';
     const copied = await copyText(notesMarkdown(), 'Chrome blocked copying on this page, so the text of your ' + count);
     message((copied ? 'Copied ' + count + ' as text for any agent.' : 'Not copied yet: the text is selected for you.')
       + ' Your drafts are unchanged.' + images);
@@ -1740,16 +1740,16 @@
       case 'confirmed':
         return {title: 'Received by ' + label, text: 'The agent accepted ' + batch + ' ' + time + '.'};
       case 'submitted':
-        return {title: 'Entered in ' + label, text: 'PaneParcel typed ' + batch + ' into the conversation, or started '
+        return {title: 'Entered in ' + label, text: 'Nitpost typed ' + batch + ' into the conversation, or started '
           + 'it with them, ' + time + '. The agent sends nothing back, so this does not confirm it read them.'};
       case 'unconfirmed':
-        return {title: 'Posted to ' + label + ', no receipt', text: 'PaneParcel posted ' + batch + ' to the '
+        return {title: 'Posted to ' + label + ', no receipt', text: 'Nitpost posted ' + batch + ' to the '
           + 'conversation’s inbox ' + time + '. Nothing confirms the agent picked them up.' + check};
       case 'failed':
         return {title: 'Not sent to ' + label, text: (record.detail || 'The send ' + time + ' did not go through.')
           + ' Your notes are still here.'};
       default:
-        return {title: 'No result recorded for ' + label, text: 'PaneParcel started sending ' + batch + ' ' + time
+        return {title: 'No result recorded for ' + label, text: 'Nitpost started sending ' + batch + ' ' + time
           + ' and has no confirmed result, so they may or may not have arrived.' + check};
     }
   }
@@ -1805,10 +1805,10 @@
 
   function shortcutTip() {
     const text = shortcut
-      ? ['Press ', element('span', 'key shortcut-key', shortcut), ' to open or close PaneParcel. '
+      ? ['Press ', element('span', 'key shortcut-key', shortcut), ' to open or close Nitpost. '
         + 'A menu that is open stays open, so you can annotate it.']
       : ['No keyboard shortcut is set. Choose one at ', element('code', '', shortcutSettings),
-        ' to open PaneParcel without closing an open menu.'];
+        ' to open Nitpost without closing an open menu.'];
     const tip = element('p', 'panel-text');
     tip.append(...text);
     const box = element('section', 'tip');
@@ -1823,7 +1823,7 @@
   }
 
   function orphanSection() {
-    return section('route', 'PaneParcel lost its connection to this tab',
+    return section('route', 'Nitpost lost its connection to this tab',
       element('p', 'panel-text', 'The extension was reloaded or updated. Your notes are saved in Chrome and are '
         + 'still shown here. Use Copy for agent if you need them now, then reload this tab to reconnect.'));
   }
@@ -1881,15 +1881,15 @@
   function helperFact(found) {
     if (found.connection === 'checking') return fact('Helper', 'Checking…', 'checking');
     if (found.connection === 'connected' || found.connection === 'error') {
-      return fact('Helper', 'Connected. Chrome reached the PaneParcel helper on this Mac.', 'ok');
+      return fact('Helper', 'Connected. Chrome reached the Nitpost helper on this Mac.', 'ok');
     }
     if (found.connection === 'missing') {
       const link = element('a', '', 'Open the install instructions');
       link.href = installGuide;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
-      link.title = 'Opens the PaneParcel page on GitHub in a new tab';
-      const row = fact('Helper', 'Not installed. Chrome found no PaneParcel helper on this Mac, so it cannot send. ',
+      link.title = 'Opens the Nitpost page on GitHub in a new tab';
+      const row = fact('Helper', 'Not installed. Chrome found no Nitpost helper on this Mac, so it cannot send. ',
         'problem');
       row.lastChild.append(link, ', run the installer, then press Check again. Until then, Copy for agent puts your '
         + 'notes on the clipboard to paste into any agent.');
@@ -1939,9 +1939,9 @@
 
   // One sentence for a screen reader, which does not see the panel appear.
   function routeSummary(found) {
-    if (found.connection === 'missing') return 'The PaneParcel helper is not installed. Copy for agent still works.';
+    if (found.connection === 'missing') return 'The Nitpost helper is not installed. Copy for agent still works.';
     if (found.connection === 'error') return 'The helper could not list conversations. ' + found.error;
-    if (found.connection !== 'connected') return 'The PaneParcel helper is not responding. Copy for agent still works.';
+    if (found.connection !== 'connected') return 'The Nitpost helper is not responding. Copy for agent still works.';
     if (found.gone) return found.gone + ' is no longer available. Your notes are still here.';
     if (!found.available.length) return 'No conversation is ready to receive notes.';
     return plural(found.available.length, 'conversation') + ' ready to receive notes.';
@@ -1962,8 +1962,8 @@
   }
 
   async function destination(currentPage, bar, details) {
-    const folder = field('Project', 'paneparcel-project');
-    const conversation = field('Conversation', 'paneparcel-target');
+    const folder = field('Project', 'nitpost-project');
+    const conversation = field('Conversation', 'nitpost-target');
     const found = {connection: 'checking', available: [], starts: [], checks: [], gone: '', error: ''};
     let chosen = null;
     let loading = true;
@@ -1998,7 +1998,7 @@
       const recorded = attempt && attempt.at !== before;
       if (recorded) announce(attemptWords(attempt).title + '. ' + attemptWords(attempt).text);
       if (stopped) {
-        message('Chrome stopped PaneParcel before the send finished. ' + (recorded
+        message('Chrome stopped Nitpost before the send finished. ' + (recorded
           ? 'What is known about it is shown above.' : 'Nothing was recorded, so send again.'), true);
       } else if (!result?.ok && !(recorded && result?.error === attempt.detail)) {
         message(result?.error || 'The request failed. Try again.', true);
@@ -2262,7 +2262,7 @@
     handledKey = event.key;
   }, true);
 
-  // The page must not see the release of a key press that PaneParcel handled.
+  // The page must not see the release of a key press that Nitpost handled.
   window.addEventListener('keyup', event => {
     if (event.key !== handledKey) return;
     handledKey = null;
@@ -2291,6 +2291,6 @@
   window.addEventListener('pageshow', routeChanged);
   window.addEventListener('hashchange', routeChanged);
   window.addEventListener('popstate', routeChanged);
-  globalThis.togglePaneParcel = toggle;
+  globalThis.toggleNitpost = toggle;
   await toggle();
 })();

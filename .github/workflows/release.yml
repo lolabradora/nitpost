@@ -25,10 +25,10 @@ jobs:
         env:
           SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
           SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
-          PANE_PARCEL_SIGN_IDENTITY: ${{ vars.MACOS_SIGN_IDENTITY }}
+          NITPOST_SIGN_IDENTITY: ${{ vars.MACOS_SIGN_IDENTITY }}
         run: |
-          if [[ -z "$SIGN_P12$SIGN_PASSWORD$PANE_PARCEL_SIGN_IDENTITY" ]]; then exit 0; fi
-          : "${SIGN_P12:?}" "${SIGN_PASSWORD:?}" "${PANE_PARCEL_SIGN_IDENTITY:?}"
+          if [[ -z "$SIGN_P12$SIGN_PASSWORD$NITPOST_SIGN_IDENTITY" ]]; then exit 0; fi
+          : "${SIGN_P12:?}" "${SIGN_PASSWORD:?}" "${NITPOST_SIGN_IDENTITY:?}"
           umask 077
           keychain="$RUNNER_TEMP/build.keychain-db"
           cert="$RUNNER_TEMP/cert.p12"
@@ -53,8 +53,8 @@ jobs:
         run: |
           if [[ -z "$ASC_KEY_P8$ASC_KEY_ID$ASC_ISSUER_ID" ]]; then
             # A maintainer may have already submitted these exact signed bytes.
-            binary="$RUNNER_TEMP/paneparcel"
-            tar -xzf dist/paneparcel-macos-arm64.tar.gz -C "$RUNNER_TEMP" paneparcel
+            binary="$RUNNER_TEMP/nitpost"
+            tar -xzf dist/nitpost-macos-arm64.tar.gz -C "$RUNNER_TEMP" nitpost
             codesign --verify --strict --check-notarization -R='notarized' "$binary"
             echo 'Developer ID signed and notarized by Apple.' > "$RUNNER_TEMP/signing.txt"
             exit 0
@@ -64,7 +64,7 @@ jobs:
           key="$RUNNER_TEMP/notary.p8"
           trap 'rm -f "$key"' EXIT
           printf '%s' "$ASC_KEY_P8" > "$key"
-          xcrun notarytool submit dist/paneparcel-notary.zip --key "$key" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait --timeout 30m --output-format json > "$RUNNER_TEMP/notary.json"
+          xcrun notarytool submit dist/nitpost-notary.zip --key "$key" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait --timeout 30m --output-format json > "$RUNNER_TEMP/notary.json"
           jq -e '.status == "Accepted"' "$RUNNER_TEMP/notary.json"
           echo 'Developer ID signed and accepted by Apple for notarization.' > "$RUNNER_TEMP/signing.txt"
       - name: Publish the verified macOS installer and Chrome package
@@ -75,21 +75,21 @@ jobs:
           notes="$RUNNER_TEMP/release.md"
           # shellcheck disable=SC2016,SC2129
           {
-            printf 'PaneParcel for Apple Silicon Macs and Google Chrome. Rex is optional.\n\n'
+            printf 'Nitpost for Apple Silicon Macs and Google Chrome. Rex is optional.\n\n'
             cat "$RUNNER_TEMP/signing.txt"
             if [[ -f "releases/$tag.md" ]]; then
               echo
               cat "releases/$tag.md"
             fi
             printf '\n```sh\ncurl -fsSL https://github.com/%s/releases/download/%s/install.sh | /bin/sh\n```\n' "$GITHUB_REPOSITORY" "$tag"
-            printf '\nIn Chrome, enable Developer mode, choose **Load unpacked**, then select `~/Library/Application Support/PaneParcel/extension`. See the [installation and upgrade guide](https://github.com/%s/blob/%s/README.md).\n' "$GITHUB_REPOSITORY" "$tag"
+            printf '\nIn Chrome, enable Developer mode, choose **Load unpacked**, then select `~/Library/Application Support/Nitpost/extension`. See the [installation and upgrade guide](https://github.com/%s/blob/%s/README.md).\n' "$GITHUB_REPOSITORY" "$tag"
           } > "$notes"
-          files=(install.sh dist/paneparcel-macos-arm64.tar.gz dist/paneparcel-chrome.zip)
+          files=(install.sh dist/nitpost-macos-arm64.tar.gz dist/nitpost-chrome.zip)
           shasum -a 256 "${files[@]}" | sed 's|  dist/|  |' > SHA256SUMS
           if gh release view "$tag" --json isDraft >/dev/null 2>&1; then
             test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
           else
-            gh release create "$tag" --verify-tag --draft --title "PaneParcel ${tag#v}" --notes-file "$notes"
+            gh release create "$tag" --verify-tag --draft --title "Nitpost ${tag#v}" --notes-file "$notes"
           fi
           gh release upload "$tag" "${files[@]}" SHA256SUMS --clobber
           flags=(--latest)

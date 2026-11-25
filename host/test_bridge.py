@@ -28,7 +28,7 @@ class BridgeTests(unittest.TestCase):
         self.assertTrue(all(ch.isprintable() for ch in message))
         # All page-supplied data constitutes a single quoted shell argument.
         args = shlex.split(message)
-        self.assertEqual(args[:-1], ["Web", "annotations", "from", "PaneParcel:"])
+        self.assertEqual(args[:-1], ["Web", "annotations", "from", "Nitpost:"])
         batch = json.loads(args[-1])
         self.assertEqual(batch["Source page"], self.request["page"])
         self.assertEqual(batch["notes"][0]["User note"], special)
