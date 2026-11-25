@@ -45,14 +45,18 @@ jobs:
           node --test tests/install.test.cjs
       - name: Verify signed release candidate
         run: sh scripts/verify-release.sh "$GITHUB_REF_NAME"
-      - name: Notarize with Apple when configured
+      - name: Require Apple notarization for the signed binary
         env:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           ASC_KEY_ID: ${{ vars.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ vars.ASC_ISSUER_ID }}
         run: |
-          if [[ -z "$ASC_KEY_P8$ASC_KEY_ID$ASC_ISSUER_ID" && "$GITHUB_REF_NAME" == *-beta.* ]]; then
-            echo 'Developer ID signed. This beta has not been notarized; macOS Gatekeeper may prevent it from opening.' > "$RUNNER_TEMP/signing.txt"
+          if [[ -z "$ASC_KEY_P8$ASC_KEY_ID$ASC_ISSUER_ID" ]]; then
+            # A maintainer may have already submitted these exact signed bytes.
+            binary="$RUNNER_TEMP/paneparcel"
+            tar -xzf dist/paneparcel-macos-arm64.tar.gz -C "$RUNNER_TEMP" paneparcel
+            codesign --verify --strict --check-notarization "$binary"
+            echo 'Developer ID signed and notarized by Apple.' > "$RUNNER_TEMP/signing.txt"
             exit 0
           fi
           : "${ASC_KEY_P8:?Apple notarization credentials missing}" "${ASC_KEY_ID:?}" "${ASC_ISSUER_ID:?}"
