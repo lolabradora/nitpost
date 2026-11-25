@@ -18,6 +18,6 @@ install_paneparcel() {
     fi
     (cd "$tmp" && echo "$digest  $asset" | /usr/bin/shasum -a 256 -c -)
     /usr/bin/tar xzf "$tmp/$asset" -C "$tmp"
-    "$tmp/paneparcel" register install "$@"
+    "$tmp/paneparcel" register install --extension-id hjaimaioehmmfbfclcmmphhenealomfp "$@"
 }
 install_paneparcel "$@"

@@ -19,14 +19,14 @@ test('prebuilt install, native request, legacy update, reinstall and uninstall',
     const body = Buffer.from(JSON.stringify({op}));
     const head = Buffer.alloc(4);
     head.writeUInt32LE(body.length);
-    const reply = execFileSync(binary, ['chrome-extension://nbodoigokndfjagdocbaobppgepiflpf/'], {env, input: Buffer.concat([head,body])});
+    const reply = execFileSync(binary, ['chrome-extension://nbodoigokndfjagdocbaobppgepiflpf/', 'chrome-extension://hjaimaioehmmfbfclcmmphhenealomfp/'], {env, input: Buffer.concat([head,body])});
     assert.equal(reply.readUInt32LE(), reply.length - 4);
     return JSON.parse(reply.subarray(4));
   }
   install();
   const registration = json(manifest);
   assert.equal(registration.type, 'stdio');
-  assert.deepEqual(registration.allowed_origins, ['chrome-extension://nbodoigokndfjagdocbaobppgepiflpf/']);
+  assert.deepEqual(registration.allowed_origins, ['chrome-extension://nbodoigokndfjagdocbaobppgepiflpf/', 'chrome-extension://hjaimaioehmmfbfclcmmphhenealomfp/']);
   assert.deepEqual(request(registration.path, 'targets'), {ok: true, starts: [], targets: []});
   assert.equal(request(registration.path, 'invalid').ok, false);
   assert.equal(json(path.join(root, 'extension/manifest.json')).key, json(path.join(__dirname, '../extension/manifest.json')).key);
