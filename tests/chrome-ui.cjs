@@ -253,7 +253,8 @@ async function launch(executable, {helper = true, extension = extensionDir} = {}
       '--window-size=1280,800',
       '--hide-scrollbars',
       '--no-proxy-server',
-      '--host-resolver-rules=MAP insecure.test 127.0.0.1',
+      // GitHub resolves to this machine, so the tab a problem report opens reaches nothing.
+      '--host-resolver-rules=MAP insecure.test 127.0.0.1, MAP github.com 127.0.0.1',
       '--force-prefers-reduced-motion',
       'about:blank',
     ],
@@ -1110,8 +1111,51 @@ async function recheck(page, session, connection) {
   return {view, asked: session.host.requests('targets').length - before};
 }
 
+// Presses Report a problem, closes the tab it opens and returns that tab's address.
+async function reportProblem(session, page) {
+  const tabs = async () =>
+    (await session.rpc('Target.getTargets')).targetInfos.filter(info => info.type === 'page');
+  const before = (await tabs()).map(info => info.targetId);
+  await page.press('report');
+  const opened = await until('the issue tab', async () =>
+    (await tabs()).find(
+      info => !before.includes(info.targetId) && info.url.startsWith('https://github.com/'),
+    ),
+  );
+  await session.rpc('Target.closeTarget', {targetId: opened.targetId});
+  await session.rpc('Target.activateTarget', {targetId: page.targetId});
+  return new URL(opened.url);
+}
+
+// The report is the versions, the helper state and nothing that identifies the page or the note.
+async function checkReport(session, page, url, state) {
+  const issue = await reportProblem(session, page);
+  equal(
+    state + ': the report opens a new issue for Nitpost',
+    issue.origin + issue.pathname,
+    'https://github.com/lolabradora/nitpost/issues/new',
+  );
+  const body = issue.searchParams.get('body') ?? '';
+  check(
+    state + ': the report lists the versions and the helper state',
+    /^- Nitpost: \d\S*\n- Browser: Chrome \d+ on macOS\n- Helper: /.test(body) &&
+      body.endsWith('- Helper: ' + state + '\n\n## What happened\n\n'),
+    body,
+  );
+  const text = issue.href + decodeURIComponent(issue.href.replaceAll('+', ' '));
+  const source = new URL(url);
+  const leaks = [source.host, 'shop.html', source.search, '#title', 'A note that waits', '/work/'];
+  equal(
+    state + ': the report says nothing about the page or the note',
+    leaks.filter(leak => text.includes(leak)),
+    [],
+  );
+  const view = await page.when('the report to be confirmed', next => next.status !== '');
+  includes(state + ': the bar says where the report went', view.status, 'Opened a GitHub issue');
+}
+
 // No helper, then a helper that quits, then one that refuses to list.
-async function helperStates(session, page) {
+async function helperStates(session, page, url) {
   const view = await review(page);
   equal('missing: the bar says so', view.connection, 'missing');
   equal('missing: helper fact is a problem', view.facts.helper?.state, 'problem');
@@ -1126,6 +1170,7 @@ async function helperStates(session, page) {
     'Nothing has been sent from this page.',
   );
   check('missing: the destination lists are hidden', !view.project.shown && !view.target.shown);
+  await checkReport(session, page, url, 'missing');
 
   session.host.install();
   session.host.set({discovery: 'exit'});
@@ -1154,10 +1199,11 @@ async function helperStates(session, page) {
 }
 
 // A helper that answers: nothing eligible, then two conversations, then the saved one gone.
-async function conversationStates(session, page) {
+async function conversationStates(session, page, url) {
   session.host.set({targets: [], checks: routeChecks});
   let result = await recheck(page, session, 'connected');
   equal('none eligible: Check again asked the helper once', result.asked, 1);
+  await checkReport(session, page, url, 'connected');
   includes(
     'none eligible: helper fact says connected',
     result.view.facts.helper?.text,
@@ -1225,8 +1271,8 @@ async function connectionStates(ctx) {
     const page = await session.open(url);
     await page.open();
     await addNote(page, 'title', 'A note that waits for a destination');
-    await helperStates(session, page);
-    await conversationStates(session, page);
+    await helperStates(session, page, url);
+    await conversationStates(session, page, url);
     equal('Check again never sent anything', session.host.deliveries(), []);
     equal('no attempt was recorded', await session.stored(attemptKey(url)), undefined);
   });
@@ -1289,7 +1335,9 @@ async function reopenAttempt(page, kept) {
     'Last send',
   );
   await page.press('review');
-  return page.when('the last send', next => next.mode === 'review' && next.attempt);
+  const last = await page.when('the last send', next => next.mode === 'review' && next.attempt);
+  check('with no notes left a problem can still be reported', control(last, 'report'));
+  return last;
 }
 
 function checkAttemptControls(status, view) {

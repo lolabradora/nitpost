@@ -1816,6 +1816,20 @@
     return box;
   }
 
+  // Offered beside the facts it sends. The background builds the report, and this tab adds only
+  // the helper state.
+  function reportProblem(connection) {
+    const open = async () => {
+      await request('report', {connection});
+      message('Opened a GitHub issue in a new tab. Nothing is sent unless you submit it there.');
+    };
+    const row = element('p', 'panel-detail report');
+    row.append(control(button('Report a problem', open, 'quiet'), 'report'), element('span', '',
+      'Opens a GitHub issue with the Nitpost and Chrome versions, the helper state and the result '
+      + 'of the last send. Nothing from this page or your notes is included.'));
+    return row;
+  }
+
   function panel(...sections) {
     const box = element('div', 'panel');
     box.append(...sections);
@@ -1846,7 +1860,9 @@
     } else if (notes.length) {
       void destination(currentPage, bar, details);
     } else {
-      panels.append(panel(...(attempt ? [attemptSection()] : []), shortcutTip()));
+      const tip = shortcutTip();
+      tip.append(reportProblem('unchecked'));
+      panels.append(panel(...(attempt ? [attemptSection()] : []), tip));
     }
     bar.append(dimToggle(), button('Close', () => idle(true), 'icon', close));
     if (notice && !status.textContent) message(notice);
@@ -1957,7 +1973,7 @@
     box.dataset.connection = found.connection;
     box.dataset.eligible = String(found.available.length);
     if (found.gone) box.dataset.gone = '';
-    box.append(facts);
+    box.append(facts, reportProblem(found.connection));
     return box;
   }
 
