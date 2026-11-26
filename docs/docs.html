@@ -9,6 +9,7 @@
   <link rel="icon" href="toolbar-icon.png">
   <link rel="stylesheet" href="site.css">
   <link rel="stylesheet" href="docs.css">
+  <script src="signals.js" defer></script>
   <script src="site.js" defer></script>
 </head>
 <body id="top">
@@ -20,7 +21,7 @@
         <a class="nav-optional" href="index.html#preview">Demo</a>
         <a href="docs.html" aria-current="page">Docs</a>
         <a href="index.html#install">Setup</a>
-        <a class="github" href="https://github.com/lolabradora/nitpost">GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a>
+        <a class="github" href="https://github.com/lolabradora/nitpost" data-signal="open-github">GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a>
       </nav>
     </div>
   </header>
@@ -50,7 +51,7 @@
         <p><span id="checkout-hint" hidden>From the Nitpost checkout: </span>Open a terminal where your agent CLIs are on PATH.</p>
         <div class="install-command">
           <code id="install-command" data-checkout-command="sh install.sh">curl -fsSL https://github.com/lolabradora/nitpost/releases/download/v0.3.0-beta.2/install.sh | /bin/sh</code>
-          <button type="button" class="install-copy" hidden aria-label="Copy install command">Copy</button>
+          <button type="button" class="install-copy" hidden data-signal="copy-install-command" aria-label="Copy install command">Copy</button>
         </div>
         <p class="install-status" role="status"></p>
         <p>The installer verifies the bundled archive against a pinned SHA-256, installs the companion and the extension under <code>~/Library/Application Support/Nitpost</code>, and registers the companion for the current Google Chrome user.</p>
@@ -101,7 +102,7 @@
         <p>Rex and terminal routes address a foreground pane. Finish sign-in, trust and approval dialogs first, and refresh after using an in-terminal conversation switcher. Inspect the destination before retrying any uncertain delivery.</p>
         <h3>What Nitpost does not do</h3>
         <p>It does not resume or fork sessions, edit history, approve agent prompts, start a daemon for discovery, or silently fall back from one delivery mechanism to another. The picker has no routes to cloud, SSH-only or other-account sessions.</p>
-        <p><a class="text-link" href="https://github.com/lolabradora/nitpost#choose-a-conversation">Full session requirements on GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></p>
+        <p><a class="text-link" href="https://github.com/lolabradora/nitpost#choose-a-conversation" data-signal="open-github">Full session requirements on GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></p>
       </section>
 
       <section id="payload">
@@ -123,7 +124,7 @@
         <p>Install it from GitHub in the project where you use your agent.</p>
         <div class="install-command">
           <code>npx skills add lolabradora/nitpost --skill nitpost</code>
-          <button type="button" class="install-copy" hidden aria-label="Copy skill install command">Copy</button>
+          <button type="button" class="install-copy" hidden data-signal="copy-skill-command" aria-label="Copy skill install command">Copy</button>
         </div>
         <p class="install-status" role="status"></p>
         <p>Choose Codex or Claude Code when prompted. Add <code>-g</code> to make it available across projects. Start a fresh agent session to pick up the skill.</p>
@@ -135,7 +136,7 @@
         <p>Nitpost activates when you click its toolbar icon or press its shortcut. Drafts, their screenshots and reference images, recent folders, destination preferences and a record of the last send from each page are stored in Chrome’s local extension storage. A draft stays until you remove it or a send removes it. A send with no receipt keeps its notes until you mark them as received. There is no developer-operated account, analytics service or cloud backend.</p>
         <p>Sending shares the full URL including query and fragment, the selected element context, your comments and the screenshot paths with the chosen agent, which uses its own configured model provider. When you send, the companion writes each image to a private cache folder on your Mac. It deletes files older than seven days whenever Chrome next contacts it, and uninstalling the companion removes the folder.</p>
         <p>Some terminal routes and new-session prompts use command arguments that are visible to local process inspection. Choose pages and destinations accordingly.</p>
-        <p><a class="text-link" href="https://github.com/lolabradora/nitpost/blob/main/PRIVACY.md">Privacy policy on GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></p>
+        <p><a class="text-link" href="https://github.com/lolabradora/nitpost/blob/main/PRIVACY.md" data-signal="open-privacy">Privacy policy on GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></p>
       </section>
 
       <section id="update">
@@ -173,9 +174,9 @@
             <li><a href="docs.html">Docs</a></li>
           </ul>
           <ul>
-            <li><a href="https://github.com/lolabradora/nitpost">GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
-            <li><a href="https://github.com/lolabradora/nitpost/releases">Releases <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
-            <li><a href="https://github.com/lolabradora/nitpost/blob/main/PRIVACY.md">Privacy <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
+            <li><a href="https://github.com/lolabradora/nitpost" data-signal="open-github">GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
+            <li><a href="https://github.com/lolabradora/nitpost/releases" data-signal="open-releases">Releases <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
+            <li><a href="https://github.com/lolabradora/nitpost/blob/main/PRIVACY.md" data-signal="open-privacy">Privacy <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
           </ul>
         </nav>
       </div>

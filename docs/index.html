@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="site.css">
   <link rel="stylesheet" href="demo.css">
   <script src="demo.js" defer></script>
+  <script src="signals.js" defer></script>
   <script src="site.js" defer></script>
 </head>
 <body id="top">
@@ -21,7 +22,7 @@
         <a class="nav-optional" href="#preview">Demo</a>
         <a href="docs.html">Docs</a>
         <a href="#install">Setup</a>
-        <a class="github" href="https://github.com/lolabradora/nitpost">GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a>
+        <a class="github" href="https://github.com/lolabradora/nitpost" data-signal="open-github">GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a>
       </nav>
     </div>
   </header>
@@ -97,7 +98,7 @@
         <h2 id="install-title">Install the beta.</h2>
         <p>The signed, Apple-notarized Rust companion runs on Apple Silicon Macs. You’ll need Google Chrome and the CLI for your chosen agent.</p>
         <p>The setup below uses Chrome’s unpacked extension option.</p>
-        <a class="text-link" href="https://github.com/lolabradora/nitpost/releases">GitHub beta release <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a>
+        <a class="text-link" href="https://github.com/lolabradora/nitpost/releases" data-signal="open-releases">GitHub beta release <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a>
       </div>
       <div class="install-main">
         <ol class="install-steps">
@@ -106,7 +107,7 @@
             <p><span id="checkout-hint" hidden>From the Nitpost checkout: </span>Open a terminal where your agent CLI is on PATH. The installer checks the archive’s SHA-256, installs the companion and extension, and registers the companion with Chrome.</p>
             <div class="install-command">
               <code id="install-command" data-checkout-command="sh install.sh">curl -fsSL https://github.com/lolabradora/nitpost/releases/download/v0.3.0-beta.2/install.sh | /bin/sh</code>
-              <button type="button" class="install-copy" hidden aria-label="Copy install command">Copy</button>
+              <button type="button" class="install-copy" hidden data-signal="copy-install-command" aria-label="Copy install command">Copy</button>
             </div>
             <p class="install-status" role="status"></p>
           </li>
@@ -132,7 +133,7 @@
         <p>Install it from GitHub in the project where you use your agent.</p>
         <div class="install-command">
           <code>npx skills add lolabradora/nitpost --skill nitpost</code>
-          <button type="button" class="install-copy" hidden aria-label="Copy skill install command">Copy</button>
+          <button type="button" class="install-copy" hidden data-signal="copy-skill-command" aria-label="Copy skill install command">Copy</button>
         </div>
         <p class="install-status" role="status"></p>
       </div>
@@ -153,9 +154,9 @@
             <li><a href="docs.html">Docs</a></li>
           </ul>
           <ul>
-            <li><a href="https://github.com/lolabradora/nitpost">GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
-            <li><a href="https://github.com/lolabradora/nitpost/releases">Releases <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
-            <li><a href="https://github.com/lolabradora/nitpost/blob/main/PRIVACY.md">Privacy <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
+            <li><a href="https://github.com/lolabradora/nitpost" data-signal="open-github">GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
+            <li><a href="https://github.com/lolabradora/nitpost/releases" data-signal="open-releases">Releases <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
+            <li><a href="https://github.com/lolabradora/nitpost/blob/main/PRIVACY.md" data-signal="open-privacy">Privacy <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
           </ul>
         </nav>
       </div>

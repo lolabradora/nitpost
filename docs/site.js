@@ -11,6 +11,8 @@
     const status = copy.parentElement.nextElementSibling;
     copy.hidden = false;
     copy.addEventListener('click', async () => {
+      // Counted before the outcome is known: selecting the command shows the same intent.
+      window.nitpostSignals?.count(copy.dataset.signal);
       try {
         await navigator.clipboard.writeText(command.textContent);
         copy.textContent = 'Copied';
