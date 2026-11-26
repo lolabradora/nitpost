@@ -92,3 +92,23 @@
   .docs-fields div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .docs-main .install-command { grid-template-columns: minmax(0, 1fr); padding: 12px 14px; }
 }
+
+/* Uninstall page */
+.removed { padding-top: clamp(40px, 6vw, 80px); }
+.removed p a { text-decoration-color: #b9b3c2; transition: text-decoration-color .18s, color .18s; }
+.removed p a:hover { color: var(--violet); text-decoration-color: currentColor; }
+.reason-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.reason-list button {
+  min-height: 44px; padding: 8px 18px; border: 0; border-radius: 999px;
+  background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line);
+  font: inherit; font-size: 15px; font-weight: 540; text-align: left; cursor: pointer;
+  transition: box-shadow .18s, transform .2s var(--ease-out);
+}
+.reason-list button:hover { box-shadow: inset 0 0 0 1px #bdb7c6; }
+.reason-list button:active { transform: scale(.97); }
+.reason-list button:focus-visible { border-radius: 999px; }
+.docs-main .reason-thanks { color: var(--ink); }
+.reason-thanks:focus { outline: none; }
+@media (max-width: 560px) {
+  .reason-list { display: grid; }
+}
