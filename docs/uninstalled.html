@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f5f3">
+  <meta name="robots" content="noindex">
+  <title>Nitpost was removed from Chrome</title>
+  <link rel="icon" href="toolbar-icon.png">
+  <link rel="stylesheet" href="site.css">
+  <link rel="stylesheet" href="docs.css">
+  <script src="signals.js" data-page="uninstalled" defer></script>
+  <script src="site.js" defer></script>
+  <script src="uninstalled.js" defer></script>
+</head>
+<body id="top">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="masthead">
+    <div class="shell navbar">
+      <a class="brand" href="index.html"><img src="icon-128.png" width="28" height="28" alt="">Nitpost</a>
+      <nav aria-label="Main">
+        <a href="docs.html">Docs</a>
+        <a class="github" href="https://github.com/lolabradora/nitpost">GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="shell docs-main removed">
+    <section>
+      <h1>Nitpost was removed from Chrome.</h1>
+      <p class="docs-lede">Removing the extension cleared its local storage. Your drafts, their screenshots and reference images, recent folders, destination preferences and send records are gone from this Chrome profile.</p>
+    </section>
+
+    <section>
+      <h2>Remove the helper too</h2>
+      <p>The helper is still on your Mac. This command removes it, its registration with Chrome and the screenshot files it saved.</p>
+      <div class="install-command">
+        <code>"$HOME/Library/Application Support/Nitpost/nitpost" register uninstall</code>
+        <button type="button" class="install-copy" hidden aria-label="Copy uninstall command">Copy</button>
+      </div>
+      <p class="install-status" role="status"></p>
+      <p>Then delete the installed Nitpost folder, <code>~/Library/Application Support/Nitpost</code>. The installer never edits the Chrome profile database, agent configuration or transcripts.</p>
+    </section>
+
+    <section id="reasons" aria-labelledby="reasons-title" hidden>
+      <h2 id="reasons-title">Why did you remove it?</h2>
+      <p class="reason-ask">Optional. One click counts the reason you choose and the version you had. <a href="https://github.com/lolabradora/nitpost/blob/main/PRIVACY.md">What is recorded</a></p>
+      <div class="reason-list reason-ask" role="group" aria-labelledby="reasons-title">
+        <button type="button" data-reason="helper-install">I couldn’t get the helper installed</button>
+        <button type="button" data-reason="no-conversation">It didn’t find my agent conversation</button>
+        <button type="button" data-reason="send-failed">Sending didn’t work</button>
+        <button type="button" data-reason="missing-feature">It’s missing something I need</button>
+        <button type="button" data-reason="just-trying">I was just trying it out</button>
+        <button type="button" data-reason="other">Something else</button>
+      </div>
+      <p id="reason-thanks" class="reason-thanks" tabindex="-1" hidden>Thanks. To say more, <a href="https://github.com/lolabradora/nitpost/issues/new">open a GitHub issue</a>.</p>
+    </section>
+    <noscript><p class="removed-more">To tell us why you removed it, <a href="https://github.com/lolabradora/nitpost/issues/new">open a GitHub issue</a>.</p></noscript>
+  </main>
+  <footer class="site-footer">
+    <div class="footer-slab">
+      <div class="footer-top">
+        <div class="footer-about">
+          <a class="brand" href="index.html#top"><img src="icon-128.png" width="30" height="30" alt="">Nitpost</a>
+          <p>Pick an element. Send a note.<br>Straight to your coding agent.</p>
+        </div>
+        <nav class="footer-links" aria-label="Footer">
+          <ul>
+            <li><a href="index.html#preview">Demo</a></li>
+            <li><a href="index.html#install">Setup</a></li>
+            <li><a href="docs.html">Docs</a></li>
+          </ul>
+          <ul>
+            <li><a href="https://github.com/lolabradora/nitpost">GitHub <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
+            <li><a href="https://github.com/lolabradora/nitpost/releases">Releases <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
+            <li><a href="https://github.com/lolabradora/nitpost/blob/main/PRIVACY.md">Privacy <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4.5 4H12v7.5"/></svg></a></li>
+          </ul>
+        </nav>
+      </div>
+      <p class="footer-credit">A <a href="https://heylola.ro">heylola.ro</a> project</p>
+      <div class="footer-word" aria-hidden="true">Nitpost</div>
+    </div>
+  </footer>
+</body>
+</html>
