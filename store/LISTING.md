@@ -12,7 +12,7 @@
 
 ## Privacy and permissions
 
-The single purpose is to send user-selected page annotations to the user's coding agent. Declare the handling of website content, web addresses and user-entered notes. The extension has no analytics or developer-operated backend. Sending data to the selected agent is initiated by the user. Explain the agent's model-provider boundary using the linked policy.
+The single purpose is to send user-selected page annotations to the user's coding agent. Declare the handling of website content, web addresses and user-entered notes. The extension has no analytics or developer-operated backend and sends nothing to the developer by itself. Sending data to the selected agent is initiated by the user. Two things reach a website and belong in the declaration. When the extension is removed, Chrome opens the Nitpost website's uninstall page with only the installed version in the address; the website counts that visit with GoatCounter, without cookies, and records a reason only if the person clicks one. **Report a problem** is started by the user and opens a GitHub new-issue page prefilled with the Nitpost version, Chrome major version, operating system, helper state and the last send's status and destination kind; it carries no page URL, notes or other page content. Explain the agent's model-provider boundary using the linked policy.
 
 - `activeTab` and `scripting`: run the packaged picker when the user clicks the toolbar icon or presses the extension shortcut, and capture the visible tab once per selection to crop a screenshot the user can preview and leave out.
 - `storage`: keep notes, recent projects and destination preferences in the current Chrome profile.
